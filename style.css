@@ -1470,6 +1470,14 @@ footer {
 #edit-players-modal .modal-content {
     max-width: 540px;
     width: 95vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+#edit-players-modal .players-edit-list {
+    overflow-y: auto;
+    flex: 1;
+    padding-right: 0.25rem;
 }
 .player-edit-card {
     background: var(--bg-main);
