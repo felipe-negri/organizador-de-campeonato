@@ -8,6 +8,9 @@ import {
 import {
     getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
 } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js';
+import {
+    getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject,
+} from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js';
 
 const firebaseConfig = {
     apiKey: 'AIzaSyDKPy8Q8BNGUqGZ-DFIGyjguS7ZD_r9V8Q',
@@ -21,6 +24,7 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
+const storage = getStorage(fbApp);
 
 // ─── State ────────────────────────────────────────────────────────────────────
 const state = {
@@ -753,12 +757,23 @@ function openEditPlayersModal(teamId) {
     let html = '';
     for (let i = 0; i < 3; i++) {
         const p = jogadores[i] || {};
+        const fotoPreview = p.foto
+            ? `<img src="${p.foto}" class="player-foto-preview" alt="foto">`
+            : `<div class="player-foto-preview player-foto-empty">👤</div>`;
         html += `<div class="player-edit-card">
             <h4>Jogador ${i + 1}</h4>
             <div class="player-edit-fields">
-                <div class="player-edit-field">
-                    <label>URL da Foto:</label>
-                    <input type="url" class="player-foto" data-idx="${i}" value="${p.foto || ''}" placeholder="https://...">
+                <div class="player-edit-field player-foto-field">
+                    <label>Foto:</label>
+                    <div class="player-foto-upload">
+                        ${fotoPreview}
+                        <label class="btn btn-secondary btn-sm upload-btn">
+                            📷 Escolher foto
+                            <input type="file" class="player-foto-input" data-idx="${i}" accept="image/*" style="display:none">
+                        </label>
+                        ${p.foto ? `<button class="btn btn-danger btn-sm player-foto-remove" data-idx="${i}">🗑️</button>` : ''}
+                    </div>
+                    <input type="hidden" class="player-foto" data-idx="${i}" value="${p.foto || ''}">
                 </div>
                 <div class="player-edit-field">
                     <label>Nome Completo:</label>
@@ -782,7 +797,53 @@ function openEditPlayersModal(teamId) {
         </div>`;
     }
     $('#edit-players-list').innerHTML = html;
+
+    // Wire up file inputs for preview
+    $$('.player-foto-input').forEach(input => {
+        input.addEventListener('change', () => handlePhotoPreview(input));
+    });
+    $$('.player-foto-remove').forEach(btn => {
+        btn.addEventListener('click', () => handlePhotoRemove(btn.dataset.idx));
+    });
+
     $('#edit-players-modal').classList.remove('hidden');
+}
+
+function handlePhotoPreview(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const idx = input.dataset.idx;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const card = input.closest('.player-edit-card');
+        const wrap = card.querySelector('.player-foto-upload');
+        let preview = wrap.querySelector('.player-foto-preview');
+        if (!preview) {
+            preview = document.createElement('img');
+            preview.className = 'player-foto-preview';
+            wrap.prepend(preview);
+        } else {
+            preview.outerHTML = `<img src="${e.target.result}" class="player-foto-preview" alt="foto">`;
+        }
+        wrap.querySelector('.player-foto-preview').src = e.target.result;
+        // Mark as pending upload
+        card.querySelector('.player-foto').dataset.pendingFile = idx;
+    };
+    reader.readAsDataURL(file);
+}
+
+function handlePhotoRemove(idx) {
+    const inputs = $$('.player-foto-input');
+    const card = inputs[idx]?.closest('.player-edit-card');
+    if (!card) return;
+    const wrap = card.querySelector('.player-foto-upload');
+    const preview = wrap.querySelector('.player-foto-preview');
+    if (preview) {
+        preview.outerHTML = `<div class="player-foto-preview player-foto-empty">👤</div>`;
+    }
+    card.querySelector('.player-foto').value = '__remove__';
+    const removeBtn = wrap.querySelector('.player-foto-remove');
+    if (removeBtn) removeBtn.remove();
 }
 
 function closeEditPlayersModal() {
@@ -793,23 +854,49 @@ function closeEditPlayersModal() {
 async function savePlayersModal() {
     const teamId = state.editingTeamId;
     if (!teamId) return;
-    const jogadores = [];
-    for (let i = 0; i < 3; i++) {
-        const foto = ($$('.player-foto')[i]?.value || '').trim();
-        const nome = ($$('.player-nome')[i]?.value || '').trim();
-        const apelido = ($$('.player-apelido')[i]?.value || '').trim();
-        const nivel = ($$('.player-nivel')[i]?.value || '').trim();
-        const lane = ($$('.player-lane')[i]?.value || '').trim();
-        if (nome || apelido) {
-            jogadores.push({ foto, nome, apelido, nivel, lane });
-        }
-    }
+
+    const saveBtn = $('#edit-players-save');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Salvando...';
+
     try {
+        const jogadores = [];
+        for (let i = 0; i < 3; i++) {
+            const fotoInput = $$('.player-foto-input')[i];
+            const fotoHidden = $$('.player-foto')[i];
+            const nome = ($$('.player-nome')[i]?.value || '').trim();
+            const apelido = ($$('.player-apelido')[i]?.value || '').trim();
+            const nivel = ($$('.player-nivel')[i]?.value || '').trim();
+            const lane = ($$('.player-lane')[i]?.value || '').trim();
+
+            let fotoUrl = fotoHidden?.value || '';
+
+            // Remove photo
+            if (fotoUrl === '__remove__') {
+                fotoUrl = '';
+            }
+            // Upload new file
+            else if (fotoInput?.files?.[0]) {
+                const file = fotoInput.files[0];
+                const ext = file.name.split('.').pop();
+                const storageRef = ref(storage, `jogadores/${teamId}/${i}.${ext}`);
+                const snapshot = await uploadBytesResumable(storageRef, file);
+                fotoUrl = await getDownloadURL(snapshot.ref);
+            }
+
+            if (nome || apelido) {
+                jogadores.push({ foto: fotoUrl, nome, apelido, nivel, lane });
+            }
+        }
+
         await updateDoc(doc(db, 'times', teamId), { jogadores });
         closeEditPlayersModal();
         showToast('Jogadores salvos!');
     } catch (e) {
         showError('Erro ao salvar jogadores: ' + e.message);
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Salvar';
     }
 }
 

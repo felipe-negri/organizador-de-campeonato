@@ -1600,3 +1600,44 @@ footer {
         max-width: 100%;
     }
 }
+
+/* ─── Player Photo Upload ──────────────────────────────────────────────── */
+.player-foto-upload {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    flex-wrap: wrap;
+}
+
+.player-foto-preview {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--card-bg);
+    flex-shrink: 0;
+}
+
+.player-foto-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    background: var(--card-bg);
+    color: var(--text-muted);
+}
+
+.upload-btn {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    font-size: .85rem;
+    padding: .35rem .7rem;
+}
+
+.btn-sm {
+    font-size: .8rem;
+    padding: .3rem .6rem;
+}
