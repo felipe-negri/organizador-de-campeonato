@@ -298,7 +298,6 @@ function renderStandings() {
             <td>${t.played}</td>
             <td>${t.wins}</td>
             <td class="col-hide-mobile">${t.tbWins}</td>
-            <td>${t.draws}</td>
             <td class="col-hide-mobile">${t.tbLosses}</td>
             <td>${t.losses}</td>
             <td class="col-hide-mobile">${t.gf}</td>
