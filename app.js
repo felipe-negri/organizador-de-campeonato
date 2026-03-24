@@ -610,6 +610,63 @@ async function initBracket() {
     }
 }
 
+async function generateRoundRobin() {
+    const teams = [...state.teams];
+    if (teams.length < 2) { alert('Cadastre pelo menos 2 times antes de gerar as rodadas.'); return; }
+    if (state.matches.length > 0 && !confirm(`Já existem ${state.matches.length} partidas cadastradas. Deseja apagar tudo e gerar novamente?`)) return;
+
+    // Circle algorithm: if odd number of teams, add a "bye" placeholder
+    const list = teams.length % 2 === 0 ? [...teams] : [...teams, null];
+    const n = list.length;
+    const numRounds = n - 1;
+    const matchesPerRound = n / 2;
+
+    const fixtures = [];
+    const rotation = list.slice(1); // all except the fixed first element
+
+    for (let round = 0; round < numRounds; round++) {
+        const roundTeams = [list[0], ...rotation];
+        for (let i = 0; i < matchesPerRound; i++) {
+            const home = roundTeams[i];
+            const away = roundTeams[n - 1 - i];
+            // skip bye matches
+            if (home && away) {
+                fixtures.push({
+                    rodada: round + 1,
+                    mandante: home.nome,
+                    visitante: away.nome,
+                    gols_mandante: null,
+                    gols_visitante: null,
+                    ordem: i,
+                });
+            }
+        }
+        // rotate: move last element to front of rotation
+        rotation.unshift(rotation.pop());
+    }
+
+    try {
+        const batch = writeBatch(db);
+        state.matches.forEach(m => batch.delete(doc(db, 'jogos', m.id)));
+        // Firestore batch limit is 500 ops; split if needed
+        const chunkSize = 490;
+        for (let i = 0; i < fixtures.length; i += chunkSize) {
+            const chunk = fixtures.slice(i, i + chunkSize);
+            if (i === 0) {
+                chunk.forEach(f => batch.set(doc(collection(db, 'jogos')), f));
+                await batch.commit();
+            } else {
+                const b2 = writeBatch(db);
+                chunk.forEach(f => b2.set(doc(collection(db, 'jogos')), f));
+                await b2.commit();
+            }
+        }
+        alert(`✅ ${fixtures.length} partidas geradas em ${numRounds} rodadas!`);
+    } catch (e) {
+        showError('Erro ao gerar rodadas: ' + e.message);
+    }
+}
+
 // ─── Firestore Listeners ──────────────────────────────────────────────────────
 function setupListeners() {
     const ready = () => Object.values(state.dataReady).every(Boolean);
@@ -689,6 +746,7 @@ function init() {
     $('#admin-add-team').addEventListener('click', addTeam);
     $('#admin-add-match').addEventListener('click', addMatch);
     $('#admin-init-bracket').addEventListener('click', initBracket);
+    $('#admin-generate-rounds').addEventListener('click', generateRoundRobin);
 
     $('#prev-round').addEventListener('click', () => {
         if (state.currentRound > 1) { state.currentRound--; renderMatches(); }
