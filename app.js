@@ -534,7 +534,6 @@ function setAdminMode(isAdmin) {
 async function saveConfig() {
     const name = $('#admin-champ-name').value.trim();
     const classified = parseInt($('#admin-classified').value) || 8;
-    if (!name) { alert('Digite o nome do campeonato.'); return; }
     try {
         await setDoc(doc(db, 'config', 'main'), { nome_campeonato: name, classificados: classified });
     } catch (e) {
