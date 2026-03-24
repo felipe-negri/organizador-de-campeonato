@@ -1427,6 +1427,32 @@ function init() {
     lightbox.addEventListener('click', () => lightbox.classList.add('hidden'));
     document.addEventListener('keydown', e => { if (e.key === 'Escape') lightbox.classList.add('hidden'); });
 
+    // Abbreviation legend toggle (click on mobile, hover handled by CSS on desktop)
+    const abbrToggle = $('#abbr-legend-toggle');
+    if (abbrToggle) {
+        abbrToggle.addEventListener('click', () => {
+            const open = abbrToggle.classList.toggle('open');
+            abbrToggle.setAttribute('aria-expanded', open);
+        });
+        document.addEventListener('click', e => {
+            if (!abbrToggle.contains(e.target)) {
+                abbrToggle.classList.remove('open');
+                abbrToggle.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
+
+    // Abbreviation legend toggle (mobile click)
+    const abbrToggle = $('#abbr-legend-toggle');
+    abbrToggle.addEventListener('click', e => {
+        e.stopPropagation();
+        const isOpen = abbrToggle.classList.toggle('open');
+        abbrToggle.setAttribute('aria-expanded', isOpen);
+    });
+    document.addEventListener('click', e => {
+        if (!abbrToggle.contains(e.target)) abbrToggle.classList.remove('open');
+    });
+
     $('#prev-round').addEventListener('click', () => {
         if (state.currentRound > 1) { state.currentRound--; renderMatches(); }
     });

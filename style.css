@@ -1926,3 +1926,109 @@ footer {
     text-transform: uppercase;
     letter-spacing: 0.4px;
 }
+
+/* ─── Modal Select Styling ────────────────────────────────────────────────── */
+.modal-content select {
+    width: 100%;
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text);
+    font-size: 0.875rem;
+    font-family: var(--font);
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b949e' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.65rem center;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.modal-content select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-bg);
+}
+
+.modal-content select:hover {
+    border-color: var(--primary);
+}
+
+/* ─── Abbreviation Legend ─────────────────────────────────────────────────── */
+.legend {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.legend-abbr-toggle {
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+}
+
+.legend-abbr-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.legend-abbr-toggle:hover .legend-abbr-label,
+.legend-abbr-toggle.open .legend-abbr-label {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.abbr-legend-popup {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 0.75rem 1rem;
+    box-shadow: var(--shadow-lg);
+    z-index: 200;
+    min-width: 220px;
+    animation: popIn 0.15s ease;
+}
+
+@keyframes popIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Desktop: show on hover */
+@media (hover: hover) {
+    .legend-abbr-toggle:hover .abbr-legend-popup { display: block; }
+}
+
+/* Mobile / touch: show on .open class (toggled via JS) */
+.legend-abbr-toggle.open .abbr-legend-popup { display: block; }
+
+.abbr-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.3rem 0.75rem;
+    align-items: center;
+}
+
+.abbr-key {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--primary);
+    text-align: right;
+    font-family: monospace;
+}
+
+.abbr-val {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
