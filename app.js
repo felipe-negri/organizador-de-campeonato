@@ -1430,7 +1430,8 @@ function init() {
     // Abbreviation legend toggle (click on mobile, hover handled by CSS on desktop)
     const abbrToggle = $('#abbr-legend-toggle');
     if (abbrToggle) {
-        abbrToggle.addEventListener('click', () => {
+        abbrToggle.addEventListener('click', e => {
+            e.stopPropagation();
             const open = abbrToggle.classList.toggle('open');
             abbrToggle.setAttribute('aria-expanded', open);
         });
@@ -1441,17 +1442,6 @@ function init() {
             }
         });
     }
-
-    // Abbreviation legend toggle (mobile click)
-    const abbrToggle = $('#abbr-legend-toggle');
-    abbrToggle.addEventListener('click', e => {
-        e.stopPropagation();
-        const isOpen = abbrToggle.classList.toggle('open');
-        abbrToggle.setAttribute('aria-expanded', isOpen);
-    });
-    document.addEventListener('click', e => {
-        if (!abbrToggle.contains(e.target)) abbrToggle.classList.remove('open');
-    });
 
     $('#prev-round').addEventListener('click', () => {
         if (state.currentRound > 1) { state.currentRound--; renderMatches(); }
