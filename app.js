@@ -37,6 +37,7 @@ const state = {
     dataReady: { config: false, teams: false, matches: false, knockout: false },
     editingMatch: null,
     editingBracket: null,
+    editingTeamId: null,
 };
 
 // ─── DOM helpers ──────────────────────────────────────────────────────────────
@@ -178,7 +179,7 @@ function renderStandings() {
             <td class="col-pos">${pos}</td>
             <td class="col-team">
                 <span style="display:inline-block;width:4px;height:16px;border-radius:2px;background:${t.color};margin-right:6px;vertical-align:middle;"></span>
-                ${t.name}
+                <span class="team-name-link" data-team="${t.name}">${t.name}</span>
             </td>
             <td class="col-stat-pts">${t.pts}</td>
             <td>${t.played}</td>
@@ -193,6 +194,7 @@ function renderStandings() {
         </tr>`;
     });
     $('#standings-body').innerHTML = html;
+    bindTeamPopovers();
 }
 
 // ─── Render Matches ───────────────────────────────────────────────────────────
@@ -380,6 +382,112 @@ function renderRules() {
     container.innerHTML = `<p>${escaped}</p>`;
 }
 
+// ─── Team Popover / Card ──────────────────────────────────────────────────────
+function buildTeamCardHtml(team) {
+    const jogadores = team.jogadores || [];
+    if (jogadores.length === 0) return null;
+
+    let html = `<div class="team-card-header">
+        <span class="team-card-color" style="background:${team.cor}"></span>
+        <span class="team-card-name">${team.nome}</span>
+        <span class="team-card-abbr">${team.sigla}</span>
+    </div>
+    <div class="team-card-players">`;
+
+    jogadores.forEach(p => {
+        const fotoHtml = p.foto
+            ? `<img src="${p.foto}" alt="${p.apelido || p.nome}" class="player-avatar" onerror="this.style.display='none'">`
+            : `<div class="player-avatar-placeholder">👤</div>`;
+        html += `<div class="player-row">
+            ${fotoHtml}
+            <div class="player-info">
+                <span class="player-nickname">${p.apelido || p.nome}</span>
+                <span class="player-fullname">${p.nome}</span>
+                <div class="player-tags">
+                    ${p.nivel ? `<span class="player-tag">${p.nivel}</span>` : ''}
+                    ${p.lane ? `<span class="player-tag tag-lane">${p.lane}</span>` : ''}
+                </div>
+            </div>
+        </div>`;
+    });
+
+    html += '</div>';
+    return html;
+}
+
+function findTeamByName(name) {
+    return state.teams.find(t => t.nome === name);
+}
+
+const isMobile = () => window.innerWidth <= 640;
+
+function bindTeamPopovers() {
+    const popover = $('#team-popover');
+    let hideTimeout = null;
+
+    $$('.team-name-link').forEach(el => {
+        // Desktop: hover
+        el.addEventListener('mouseenter', (e) => {
+            if (isMobile()) return;
+            const team = findTeamByName(el.dataset.team);
+            if (!team) return;
+            const html = buildTeamCardHtml(team);
+            if (!html) return;
+            clearTimeout(hideTimeout);
+            popover.innerHTML = html;
+            popover.classList.remove('hidden');
+            positionPopover(popover, el);
+        });
+
+        el.addEventListener('mouseleave', () => {
+            if (isMobile()) return;
+            hideTimeout = setTimeout(() => popover.classList.add('hidden'), 200);
+        });
+
+        // Mobile: click
+        el.addEventListener('click', (e) => {
+            if (!isMobile()) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const team = findTeamByName(el.dataset.team);
+            if (!team) return;
+            const html = buildTeamCardHtml(team);
+            if (!html) { return; }
+            $('#team-card-modal-body').innerHTML = html;
+            $('#team-card-modal').classList.remove('hidden');
+        });
+    });
+
+    // Keep popover open when hovering it
+    popover.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+    popover.addEventListener('mouseleave', () => {
+        hideTimeout = setTimeout(() => popover.classList.add('hidden'), 200);
+    });
+}
+
+function positionPopover(popover, anchor) {
+    const rect = anchor.getBoundingClientRect();
+    const popH = popover.offsetHeight;
+    const popW = popover.offsetWidth;
+
+    let top = rect.bottom + window.scrollY + 6;
+    let left = rect.left + window.scrollX;
+
+    // Keep within viewport
+    if (left + popW > window.innerWidth - 16) {
+        left = window.innerWidth - popW - 16;
+    }
+    if (left < 8) left = 8;
+
+    // If below viewport, show above
+    if (top + popH > window.scrollY + window.innerHeight - 16) {
+        top = rect.top + window.scrollY - popH - 6;
+    }
+
+    popover.style.top = `${top}px`;
+    popover.style.left = `${left}px`;
+}
+
 // ─── Admin Panel ──────────────────────────────────────────────────────────────
 function renderAdminPanel() {
     $('#admin-champ-name').value = state.config.nome_campeonato || '';
@@ -396,14 +504,18 @@ function renderAdminPanel() {
 
     let teamsHtml = '';
     state.teams.forEach(t => {
+        const playerCount = (t.jogadores || []).length;
+        const playerBadge = playerCount > 0 ? `<span class="badge badge-sm">${playerCount} jogador${playerCount > 1 ? 'es' : ''}</span>` : '';
         teamsHtml += `<div class="admin-list-item">
             <span class="color-dot" style="background:${t.cor}"></span>
-            <span class="admin-item-label">${t.nome} <small>(${t.sigla})</small></span>
+            <span class="admin-item-label">${t.nome} <small>(${t.sigla})</small> ${playerBadge}</span>
+            <button class="btn btn-secondary btn-sm admin-edit-players" data-id="${t.id}" title="Editar jogadores">👥</button>
             <button class="btn btn-danger btn-sm admin-delete-team" data-id="${t.id}">🗑️</button>
         </div>`;
     });
     $('#admin-teams-list').innerHTML = teamsHtml || '<p class="hint">Nenhum time cadastrado.</p>';
     $$('.admin-delete-team').forEach(btn => btn.addEventListener('click', () => deleteTeam(btn.dataset.id)));
+    $$('.admin-edit-players').forEach(btn => btn.addEventListener('click', () => openEditPlayersModal(btn.dataset.id)));
 
     const rounds = [...new Set(state.matches.map(m => m.rodada))].sort((a, b) => a - b);
     let matchesHtml = '';
@@ -595,7 +707,7 @@ async function addTeam() {
     const cor = $('#admin-team-color').value;
     if (!nome || !sigla) { alert('Preencha nome e sigla do time.'); return; }
     try {
-        await addDoc(collection(db, 'times'), { nome, sigla, cor });
+        await addDoc(collection(db, 'times'), { nome, sigla, cor, jogadores: [] });
         $('#admin-team-name').value = '';
         $('#admin-team-abbr').value = '';
     } catch (e) {
@@ -609,6 +721,76 @@ async function deleteTeam(id) {
         await deleteDoc(doc(db, 'times', id));
     } catch (e) {
         showError('Erro ao excluir time: ' + e.message);
+    }
+}
+
+// ─── Edit Players Modal ──────────────────────────────────────────────────────
+function openEditPlayersModal(teamId) {
+    const team = state.teams.find(t => t.id === teamId);
+    if (!team) return;
+    state.editingTeamId = teamId;
+    $('#edit-players-team-name').textContent = team.nome;
+
+    const jogadores = team.jogadores || [];
+    let html = '';
+    for (let i = 0; i < 3; i++) {
+        const p = jogadores[i] || {};
+        html += `<div class="player-edit-card">
+            <h4>Jogador ${i + 1}</h4>
+            <div class="player-edit-fields">
+                <div class="player-edit-field">
+                    <label>URL da Foto:</label>
+                    <input type="url" class="player-foto" data-idx="${i}" value="${p.foto || ''}" placeholder="https://...">
+                </div>
+                <div class="player-edit-field">
+                    <label>Nome Completo:</label>
+                    <input type="text" class="player-nome" data-idx="${i}" value="${p.nome || ''}" placeholder="Nome completo">
+                </div>
+                <div class="player-edit-field">
+                    <label>Apelido:</label>
+                    <input type="text" class="player-apelido" data-idx="${i}" value="${p.apelido || ''}" placeholder="Apelido">
+                </div>
+                <div class="player-edit-row-inline">
+                    <div class="player-edit-field">
+                        <label>Nível:</label>
+                        <input type="text" class="player-nivel" data-idx="${i}" value="${p.nivel || ''}" placeholder="Ex: Avançado">
+                    </div>
+                    <div class="player-edit-field">
+                        <label>Lane:</label>
+                        <input type="text" class="player-lane" data-idx="${i}" value="${p.lane || ''}" placeholder="Ex: Mid">
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
+    $('#edit-players-list').innerHTML = html;
+    $('#edit-players-modal').classList.remove('hidden');
+}
+
+function closeEditPlayersModal() {
+    $('#edit-players-modal').classList.add('hidden');
+    state.editingTeamId = null;
+}
+
+async function savePlayersModal() {
+    const teamId = state.editingTeamId;
+    if (!teamId) return;
+    const jogadores = [];
+    for (let i = 0; i < 3; i++) {
+        const foto = ($$('.player-foto')[i]?.value || '').trim();
+        const nome = ($$('.player-nome')[i]?.value || '').trim();
+        const apelido = ($$('.player-apelido')[i]?.value || '').trim();
+        const nivel = ($$('.player-nivel')[i]?.value || '').trim();
+        const lane = ($$('.player-lane')[i]?.value || '').trim();
+        if (nome || apelido) {
+            jogadores.push({ foto, nome, apelido, nivel, lane });
+        }
+    }
+    try {
+        await updateDoc(doc(db, 'times', teamId), { jogadores });
+        closeEditPlayersModal();
+    } catch (e) {
+        showError('Erro ao salvar jogadores: ' + e.message);
     }
 }
 
@@ -807,6 +989,13 @@ function init() {
     $('#edit-bracket-cancel').addEventListener('click', closeEditBracketModal);
     $('#edit-bracket-modal').querySelector('.modal-overlay').addEventListener('click', closeEditBracketModal);
 
+    $('#edit-players-save').addEventListener('click', savePlayersModal);
+    $('#edit-players-cancel').addEventListener('click', closeEditPlayersModal);
+    $('#edit-players-modal').querySelector('.modal-overlay').addEventListener('click', closeEditPlayersModal);
+
+    $('#team-card-close').addEventListener('click', () => $('#team-card-modal').classList.add('hidden'));
+    $('#team-card-modal').querySelector('.modal-overlay').addEventListener('click', () => $('#team-card-modal').classList.add('hidden'));
+
     $('#admin-save-config').addEventListener('click', saveConfig);
     $('#admin-save-rules').addEventListener('click', saveRules);
     $('#admin-add-team').addEventListener('click', addTeam);
@@ -828,7 +1017,12 @@ function init() {
     $('#error-close').addEventListener('click', hideError);
 
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') { closeLoginModal(); closeEditScoreModal(); closeEditBracketModal(); }
+        if (e.key === 'Escape') {
+            closeLoginModal(); closeEditScoreModal(); closeEditBracketModal();
+            closeEditPlayersModal();
+            $('#team-card-modal').classList.add('hidden');
+            $('#team-popover').classList.add('hidden');
+        }
     });
 
     onAuthStateChanged(auth, user => setAdminMode(!!user));
