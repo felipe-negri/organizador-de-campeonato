@@ -154,8 +154,18 @@ header {
     border-color: var(--border);
 }
 
-.btn {
-    display: inline-flex;
+.header-instagram {
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+.header-instagram:hover {
+    color: #e1306c;
+    background: var(--hover);
+    border-color: var(--border);
+}
+
+
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
