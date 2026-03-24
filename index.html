@@ -140,6 +140,10 @@
                 <span class="tab-icon">🏆</span>
                 <span class="tab-label">Mata-Mata</span>
             </button>
+            <button class="nav-tab" data-tab="regras">
+                <span class="tab-icon">📖</span>
+                <span class="tab-label">Regras</span>
+            </button>
             <button class="nav-tab hidden" id="admin-tab-btn" data-tab="admin">
                 <span class="tab-icon">⚙️</span>
                 <span class="tab-label">Admin</span>
@@ -192,9 +196,9 @@
                             <th class="col-stat" title="Empates">E</th>
                             <th class="col-stat col-hide-mobile" title="Derrotas no Tiebreak">DT</th>
                             <th class="col-stat" title="Derrotas">D</th>
-                            <th class="col-stat col-hide-mobile" title="Gols Pró">GP</th>
-                            <th class="col-stat col-hide-mobile" title="Gols Contra">GC</th>
-                            <th class="col-stat" title="Saldo de Gols">SG</th>
+                            <th class="col-stat col-hide-mobile" title="Pontos Pró">PP</th>
+                            <th class="col-stat col-hide-mobile" title="Pontos Contra">PC</th>
+                            <th class="col-stat" title="Saldo de Pontos">SP</th>
                         </tr>
                     </thead>
                     <tbody id="standings-body"></tbody>
@@ -237,6 +241,18 @@
             </div>
         </section>
 
+        <!-- Regras -->
+        <section id="tab-regras" class="tab-content hidden">
+            <div class="section-header">
+                <h2>📖 Regras do Campeonato</h2>
+            </div>
+            <div class="rules-card">
+                <div id="rules-content" class="rules-body">
+                    <p class="hint">Nenhuma regra cadastrada ainda.</p>
+                </div>
+            </div>
+        </section>
+
         <!-- Admin -->
         <section id="tab-admin" class="tab-content hidden">
             <div class="section-header">
@@ -261,6 +277,17 @@
                         <input type="number" id="admin-classified" min="1" max="32" value="8" style="max-width:100px;">
                     </div>
                     <button id="admin-save-config" class="btn btn-primary">Salvar</button>
+                </div>
+            </div>
+
+            <div class="admin-section">
+                <h3 class="admin-section-title">📖 Regras do Campeonato</h3>
+                <div class="admin-form">
+                    <div class="admin-field">
+                        <label for="admin-rules">Texto das regras (suporta quebras de linha):</label>
+                        <textarea id="admin-rules" rows="10" placeholder="Ex:&#10;Vitória = 3 pontos&#10;Empate = 1 ponto para cada equipe&#10;Vitória no tiebreak = 2 pontos&#10;Derrota no tiebreak = 1 ponto"></textarea>
+                    </div>
+                    <button id="admin-save-rules" class="btn btn-primary">Salvar Regras</button>
                 </div>
             </div>
 

@@ -968,6 +968,28 @@ footer {
    UTILITIES
    ============================================ */
 .hidden { display: none !important; }
+
+/* ============================================
+   RULES
+   ============================================ */
+.rules-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+}
+
+.rules-body {
+    font-size: 0.95rem;
+    line-height: 1.8;
+    color: var(--text);
+    white-space: pre-wrap;
+}
+
+.rules-body p {
+    margin: 0;
+}
+
 /* ============================================
    ADMIN & FIREBASE ADDITIONS
    ============================================ */
@@ -1150,6 +1172,23 @@ footer {
 }
 .admin-field input {
     width: 100%;
+}
+.admin-field textarea {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.875rem;
+    outline: none;
+    resize: vertical;
+    line-height: 1.6;
+    transition: border-color var(--transition);
+}
+.admin-field textarea:focus {
+    border-color: var(--primary);
 }
 .admin-inline-form {
     display: flex;

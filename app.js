@@ -155,6 +155,7 @@ function renderAll() {
     renderStandings();
     renderMatches();
     renderBracket();
+    renderRules();
     if (state.isAdmin) renderAdminPanel();
     $('#last-updated').textContent = new Date().toLocaleString('pt-BR');
 }
@@ -364,11 +365,27 @@ function renderBracketMatch(m) {
     </div>`;
 }
 
+// ─── Render Rules ─────────────────────────────────────────────────────────────
+function renderRules() {
+    const rulesText = state.config.regras || '';
+    const container = $('#rules-content');
+    if (!container) return;
+    if (!rulesText.trim()) {
+        container.innerHTML = '<p class="hint">Nenhuma regra cadastrada ainda.</p>';
+        return;
+    }
+    const escaped = rulesText
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+    container.innerHTML = `<p>${escaped}</p>`;
+}
+
 // ─── Admin Panel ──────────────────────────────────────────────────────────────
 function renderAdminPanel() {
     $('#admin-champ-name').value = state.config.nome_campeonato || '';
     $('#admin-hide-name').checked = !!state.config.ocultar_nome;
     $('#admin-classified').value = state.config.classificados || 8;
+    $('#admin-rules').value = state.config.regras || '';
 
     const datalist = $('#teams-datalist');
     if (datalist) datalist.innerHTML = state.teams.map(t => `<option value="${t.nome}">`).join('');
@@ -555,10 +572,20 @@ async function saveConfig() {
     const name = $('#admin-champ-name').value.trim();
     const classified = parseInt($('#admin-classified').value) || 8;
     const hideName = $('#admin-hide-name').checked;
+    const regras = state.config.regras || '';
     try {
-        await setDoc(doc(db, 'config', 'main'), { nome_campeonato: name, classificados: classified, ocultar_nome: hideName });
+        await setDoc(doc(db, 'config', 'main'), { nome_campeonato: name, classificados: classified, ocultar_nome: hideName, regras });
     } catch (e) {
         showError('Erro ao salvar configurações: ' + e.message);
+    }
+}
+
+async function saveRules() {
+    const regras = $('#admin-rules').value;
+    try {
+        await setDoc(doc(db, 'config', 'main'), { ...state.config, regras });
+    } catch (e) {
+        showError('Erro ao salvar regras: ' + e.message);
     }
 }
 
@@ -781,6 +808,7 @@ function init() {
     $('#edit-bracket-modal').querySelector('.modal-overlay').addEventListener('click', closeEditBracketModal);
 
     $('#admin-save-config').addEventListener('click', saveConfig);
+    $('#admin-save-rules').addEventListener('click', saveRules);
     $('#admin-add-team').addEventListener('click', addTeam);
     $('#admin-add-match').addEventListener('click', addMatch);
     $('#admin-init-bracket').addEventListener('click', initBracket);
