@@ -671,15 +671,22 @@ async function generateRoundRobin() {
 
 // ─── Firestore Listeners ──────────────────────────────────────────────────────
 function setupListeners() {
+    let firstRender = true;
     const ready = () => Object.values(state.dataReady).every(Boolean);
 
-    const afterUpdate = (fullRender = true) => {
+    const afterUpdate = (bracketOnly = false) => {
         if (!ready()) { onDataUpdate(); return; }
         showLoading(false);
         $('#setup-message').classList.add('hidden');
         calculateStandings();
-        if (fullRender) renderAll();
-        else { renderBracket(); if (state.isAdmin) renderAdminPanel(); }
+        // Always do a full render on the first time all data is ready
+        if (firstRender || !bracketOnly) {
+            firstRender = false;
+            renderAll();
+        } else {
+            renderBracket();
+            if (state.isAdmin) renderAdminPanel();
+        }
     };
 
     onSnapshot(doc(db, 'config', 'main'), snap => {
@@ -708,7 +715,7 @@ function setupListeners() {
             .map(d => ({ id: d.id, ...d.data() }))
             .sort((a, b) => (order[a.fase] - order[b.fase]) || ((a.ordem || 0) - (b.ordem || 0)));
         state.dataReady.knockout = true;
-        afterUpdate(false);
+        afterUpdate(true);
     }, err => { console.error(err); state.dataReady.knockout = true; onDataUpdate(); });
 }
 
