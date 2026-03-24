@@ -488,17 +488,36 @@ function formatDate(iso) {
     return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-// Returns a thin vertical color bar (4px wide, segmented for multiple colors)
+// Returns a thin vertical color bar with diagonal chamfer between color segments
 function teamColorPill(t, height = 16) {
     const cores = t.cores || (t.cor ? [t.cor] : ['#888']);
     const w = 4;
-    const segH = Math.floor(height / cores.length);
-    const segs = cores.map((c, i) => {
-        const y = i * segH;
-        const sh = (i === cores.length - 1) ? height - y : segH;
-        return `<rect x="0" y="${y}" width="${w}" height="${sh}" fill="${c}"/>`;
-    }).join('');
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${height}" style="border-radius:2px;vertical-align:middle;flex-shrink:0;margin-right:6px">${segs}</svg>`;
+    const n = cores.length;
+    const chamfer = Math.min(4, Math.floor(height / (n * 2))); // diagonal overlap px
+
+    let segs = '';
+    if (n === 1) {
+        segs = `<rect x="0" y="0" width="${w}" height="${height}" fill="${cores[0]}"/>`;
+    } else {
+        const segH = height / n;
+        cores.forEach((c, i) => {
+            const y0 = i * segH;
+            const y1 = (i + 1) * segH;
+            // polygon points: top-left, top-right, bottom-right, bottom-left
+            // add chamfer: top edge shifts right for non-first, bottom shifts left for non-last
+            const tl_y = i === 0 ? y0 : y0 + chamfer;
+            const tr_y = i === 0 ? y0 : y0 + chamfer;
+            const bl_y = i === n - 1 ? y1 : y1 + chamfer;
+            const br_y = i === n - 1 ? y1 : y1 + chamfer;
+            // top chamfer cuts diagonally (previous segment overhangs)
+            const top_left_y  = i === 0 ? y0 : y0 - chamfer;
+            const top_right_y = i === 0 ? y0 : y0 + chamfer;
+            const bot_left_y  = i === n - 1 ? y1 : y1 - chamfer;
+            const bot_right_y = i === n - 1 ? y1 : y1 + chamfer;
+            segs += `<polygon points="0,${top_left_y} ${w},${top_right_y} ${w},${bot_right_y} 0,${bot_left_y}" fill="${c}"/>`;
+        });
+    }
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${height}" style="border-radius:2px;vertical-align:middle;flex-shrink:0;margin-right:6px;overflow:hidden">${segs}</svg>`;
 }
 
 function renderNextMatches() {
