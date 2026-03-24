@@ -337,7 +337,7 @@ function renderMatches() {
         const tbBadge = played && m.tiebreak ? '<span class="tiebreak-badge">TB</span>' : '';
         const dateInfo = m.data_hora
             ? `<div class="match-date-info">📅 ${formatDate(m.data_hora)}</div>`
-            : `<div class="match-date-info match-date-tbd">📅 Data: a definir</div>`;
+            : `<div class="match-date-info match-date-tbd">📅 A definir</div>`;
         html += `<div class="match-card ${played ? '' : 'not-played'}">
             <div class="match-teams">
                 <div class="match-team home">
@@ -529,7 +529,7 @@ function renderNextMatches() {
     list.innerHTML = upcoming.map(m => {
         const ht = teamMap[m.mandante] || { cor: '#888' };
         const at = teamMap[m.visitante] || { cor: '#888' };
-        const dateStr = m.data_hora ? formatDate(m.data_hora) : 'Data: a definir';
+        const dateStr = m.data_hora ? formatDate(m.data_hora) : 'A definir';
         const roundStr = `Rodada ${m.rodada}`;
         return `<div class="next-match-card">
             <div class="next-match-meta">
