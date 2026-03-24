@@ -1,6 +1,6 @@
 {
-  "name": "Organizador de Campeonato",
-  "short_name": "Campeonato",
+  "name": "Brasileirão Futvolei",
+  "short_name": "Futvolei",
   "description": "Acompanhe classificação, jogos e mata-mata do campeonato",
   "start_url": "./",
   "display": "standalone",
