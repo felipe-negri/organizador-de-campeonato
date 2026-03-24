@@ -1,4 +1,12 @@
 // app.js — Championship Dashboard powered by Firebase
+
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+}
+
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js';
 import {
     getFirestore, collection, doc,
