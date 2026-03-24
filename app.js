@@ -8,9 +8,6 @@ import {
 import {
     getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
 } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js';
-import {
-    getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject,
-} from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js';
 
 const firebaseConfig = {
     apiKey: 'AIzaSyDKPy8Q8BNGUqGZ-DFIGyjguS7ZD_r9V8Q',
@@ -24,7 +21,30 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
-const storage = getStorage(fbApp);
+
+// Resize and convert image file to base64 (max 300x300, quality 0.75)
+function imageFileToBase64(file, maxSize = 300) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = e => {
+            const img = new Image();
+            img.onerror = reject;
+            img.onload = () => {
+                const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+                const w = Math.round(img.width * scale);
+                const h = Math.round(img.height * scale);
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL('image/jpeg', 0.75));
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
 
 // ─── State ────────────────────────────────────────────────────────────────────
 const state = {
@@ -875,13 +895,9 @@ async function savePlayersModal() {
             if (fotoUrl === '__remove__') {
                 fotoUrl = '';
             }
-            // Upload new file
+            // Convert new file to base64
             else if (fotoInput?.files?.[0]) {
-                const file = fotoInput.files[0];
-                const ext = file.name.split('.').pop();
-                const storageRef = ref(storage, `jogadores/${teamId}/${i}.${ext}`);
-                const snapshot = await uploadBytesResumable(storageRef, file);
-                fotoUrl = await getDownloadURL(snapshot.ref);
+                fotoUrl = await imageFileToBase64(fotoInput.files[0]);
             }
 
             if (nome || apelido) {
