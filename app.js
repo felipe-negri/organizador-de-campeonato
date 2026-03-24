@@ -493,7 +493,7 @@ function teamColorPill(t, height = 16) {
     const cores = t.cores || (t.cor ? [t.cor] : ['#888']);
     const w = 4;
     const n = cores.length;
-    const chamfer = Math.min(4, Math.floor(height / (n * 2))); // diagonal overlap px
+    const chamfer = 2; // smaller diagonal, fixed px
 
     let segs = '';
     if (n === 1) {
@@ -503,17 +503,11 @@ function teamColorPill(t, height = 16) {
         cores.forEach((c, i) => {
             const y0 = i * segH;
             const y1 = (i + 1) * segH;
-            // polygon points: top-left, top-right, bottom-right, bottom-left
-            // add chamfer: top edge shifts right for non-first, bottom shifts left for non-last
-            const tl_y = i === 0 ? y0 : y0 + chamfer;
-            const tr_y = i === 0 ? y0 : y0 + chamfer;
-            const bl_y = i === n - 1 ? y1 : y1 + chamfer;
-            const br_y = i === n - 1 ? y1 : y1 + chamfer;
-            // top chamfer cuts diagonally (previous segment overhangs)
-            const top_left_y  = i === 0 ? y0 : y0 - chamfer;
-            const top_right_y = i === 0 ? y0 : y0 + chamfer;
-            const bot_left_y  = i === n - 1 ? y1 : y1 - chamfer;
-            const bot_right_y = i === n - 1 ? y1 : y1 + chamfer;
+            // Inverted chamfer: right side leads (top-right higher than top-left)
+            const top_left_y  = i === 0 ? y0 : y0 + chamfer;
+            const top_right_y = i === 0 ? y0 : y0 - chamfer;
+            const bot_left_y  = i === n - 1 ? y1 : y1 + chamfer;
+            const bot_right_y = i === n - 1 ? y1 : y1 - chamfer;
             segs += `<polygon points="0,${top_left_y} ${w},${top_right_y} ${w},${bot_right_y} 0,${bot_left_y}" fill="${c}"/>`;
         });
     }
