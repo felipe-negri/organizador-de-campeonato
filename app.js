@@ -1356,7 +1356,6 @@ function init() {
     }, { passive: false });
     cropCanvas.addEventListener('touchend', e => { if (e.touches.length === 0) crop.dragging = false; });
 
-    $('#team-card-close').addEventListener('click', () => $('#team-card-modal').classList.add('hidden'));
     $('#team-card-modal').querySelector('.modal-overlay').addEventListener('click', () => $('#team-card-modal').classList.add('hidden'));
 
     $('#admin-save-config').addEventListener('click', saveConfig);
