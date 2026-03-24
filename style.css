@@ -1338,7 +1338,7 @@ footer {
     z-index: 1000;
     min-width: 260px;
     max-width: 320px;
-    background: var(--card-bg);
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.25);
@@ -1373,7 +1373,7 @@ footer {
 .team-card-abbr {
     font-size: 0.75rem;
     color: var(--text-secondary);
-    background: var(--bg-main);
+    background: var(--bg);
     border-radius: 4px;
     padding: 1px 6px;
     margin-left: auto;
@@ -1386,7 +1386,7 @@ footer {
     align-items: center;
     gap: 0.75rem;
     padding: 0.5rem 1rem;
-    border-bottom: 1px solid var(--bg-main);
+    border-bottom: 1px solid var(--bg);
 }
 .player-row:last-child {
     border-bottom: none;
@@ -1397,13 +1397,13 @@ footer {
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
-    background: var(--bg-main);
+    background: var(--bg);
 }
 .player-avatar-placeholder {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: var(--bg-main);
+    background: var(--bg);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1480,7 +1480,7 @@ footer {
     padding-right: 0.25rem;
 }
 .player-edit-card {
-    background: var(--bg-main);
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 0.75rem;
@@ -1507,7 +1507,7 @@ footer {
     padding: 0.4rem 0.6rem;
     border-radius: 6px;
     border: 1px solid var(--border);
-    background: var(--card-bg);
+    background: var(--surface);
     color: var(--text-primary);
     font-size: 0.85rem;
 }
@@ -1621,7 +1621,7 @@ footer {
     object-fit: cover;
     border-radius: 8px;
     border: 2px solid var(--border);
-    background: var(--card-bg);
+    background: var(--surface);
     flex-shrink: 0;
 }
 
@@ -1630,7 +1630,7 @@ footer {
     align-items: center;
     justify-content: center;
     font-size: 1.6rem;
-    background: var(--card-bg);
+    background: var(--surface);
     color: var(--text-muted);
 }
 
