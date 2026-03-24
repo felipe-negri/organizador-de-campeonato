@@ -376,7 +376,11 @@
                 <div class="admin-inline-form">
                     <input type="text" id="admin-team-name" placeholder="Nome do time">
                     <input type="text" id="admin-team-abbr" placeholder="Sigla" style="max-width:80px;" maxlength="4">
-                    <input type="color" id="admin-team-color" value="#3fb950" title="Cor do time" style="width:40px;height:36px;padding:2px;cursor:pointer;">
+                    <div class="color-inputs">
+                        <input type="color" id="admin-team-color1" value="#3fb950" title="Cor 1" style="width:36px;height:36px;padding:2px;cursor:pointer;">
+                        <input type="color" id="admin-team-color2" value="#3fb950" title="Cor 2 (opcional)" style="width:36px;height:36px;padding:2px;cursor:pointer;opacity:0.5;">
+                        <input type="color" id="admin-team-color3" value="#3fb950" title="Cor 3 (opcional)" style="width:36px;height:36px;padding:2px;cursor:pointer;opacity:0.5;">
+                    </div>
                     <button id="admin-add-team" class="btn btn-primary">Adicionar</button>
                 </div>
                 <div id="admin-teams-list" class="admin-list"></div>
@@ -392,6 +396,7 @@
                     <select id="admin-match-away" class="admin-select">
                         <option value="">Visitante</option>
                     </select>
+                    <input type="datetime-local" id="admin-match-date" title="Data e hora (opcional)" style="flex:1;min-width:160px;">
                     <button id="admin-add-match" class="btn btn-primary">Adicionar</button>
                 </div>
                 <div id="admin-matches-list" class="admin-list"></div>

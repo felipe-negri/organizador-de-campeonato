@@ -1778,3 +1778,29 @@ footer {
     line-height: 1.7;
     color: var(--text);
 }
+
+/* ─── Multi-color team inputs ─────────────────────────────────────────────── */
+.color-inputs {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+/* ─── Next match meta (rodada + data) ─────────────────────────────────────── */
+.next-match-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 120px;
+    gap: 2px;
+}
+
+.next-match-round {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.match-date-tbd {
+    color: var(--text-muted) !important;
+    font-style: italic;
+}

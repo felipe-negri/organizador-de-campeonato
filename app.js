@@ -193,6 +193,7 @@ function calculateStandings() {
     state.teams.forEach(t => {
         stats[t.nome] = {
             id: t.id, name: t.nome, abbr: t.sigla, color: t.cor,
+            cores: t.cores || (t.cor ? [t.cor] : ['#888']),
             pts: 0, played: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0,
             tbWins: 0, tbLosses: 0,
         };
@@ -271,8 +272,8 @@ function renderStandings() {
         html += `<tr class="${isQualify ? 'qualify' : ''} ${isLastQualify ? 'qualify-border' : ''}">
             <td class="col-pos">${pos}</td>
             <td class="col-team">
-                <span style="display:inline-block;width:4px;height:16px;border-radius:2px;background:${t.color};margin-right:6px;vertical-align:middle;"></span>
-                <span class="team-name-link" data-team="${t.name}">${t.name}</span>
+                ${teamColorPill(t, 16)}
+                <span class="team-name-link" data-team="${t.name}" style="margin-left:6px">${t.name}</span>
             </td>
             <td class="col-stat-pts">${t.pts}</td>
             <td>${t.played}</td>
@@ -334,10 +335,13 @@ function renderMatches() {
             else if (m.gols_visitante > m.gols_mandante) awayWinner = 'winner';
         }
         const tbBadge = played && m.tiebreak ? '<span class="tiebreak-badge">TB</span>' : '';
+        const dateInfo = m.data_hora
+            ? `<div class="match-date-info">📅 ${formatDate(m.data_hora)}</div>`
+            : `<div class="match-date-info match-date-tbd">📅 Data: a definir</div>`;
         html += `<div class="match-card ${played ? '' : 'not-played'}">
             <div class="match-teams">
                 <div class="match-team home">
-                    <span class="team-color" style="background:${homeTeam.cor}"></span>
+                    ${teamColorPill(homeTeam, 14)}
                     <span class="match-team-name ${homeWinner}">${m.mandante}</span>
                 </div>
                 <div class="match-score ${played ? '' : 'pending'}">
@@ -346,11 +350,11 @@ function renderMatches() {
                         : `<span>vs</span>`}
                 </div>
                 <div class="match-team away">
-                    <span class="team-color" style="background:${awayTeam.cor}"></span>
+                    ${teamColorPill(awayTeam, 14)}
                     <span class="match-team-name ${awayWinner}">${m.visitante}</span>
                 </div>
             </div>
-            ${m.data_hora ? `<div class="match-date-info">📅 ${formatDate(m.data_hora)}</div>` : ''}
+            ${!played ? dateInfo : (m.data_hora ? `<div class="match-date-info">📅 ${formatDate(m.data_hora)}</div>` : '')}
             ${state.isAdmin ? `<button class="edit-match-btn" data-id="${m.id}" title="Editar placar">✏️ editar</button>` : ''}
         </div>`;
     });
@@ -484,6 +488,22 @@ function formatDate(iso) {
     return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+// Returns an inline HTML element showing 1–3 color segments in a single pill
+function teamColorPill(t, size = 16) {
+    const cores = t.cores || (t.cor ? [t.cor] : ['#888']);
+    const w = size; const h = size;
+    const seg = Math.floor(w / cores.length);
+    const segs = cores.map((c, i) => {
+        const x = i * seg;
+        const sw = (i === cores.length - 1) ? w - x : seg; // last segment fills remainder
+        return `<rect x="${x}" y="0" width="${sw}" height="${h}" fill="${c}"/>`;
+    }).join('');
+    const r = size / 4;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" style="border-radius:${r}px;vertical-align:middle;flex-shrink:0">`
+        + `<clipPath id="cp${cores.join('')}"><rect width="${w}" height="${h}" rx="${r}" ry="${r}"/></clipPath>`
+        + `<g clip-path="url(#cp${cores.join('')})">${segs}</g></svg>`;
+}
+
 function renderNextMatches() {
     const section = $('#next-matches-section');
     const list = $('#next-matches-list');
@@ -507,15 +527,19 @@ function renderNextMatches() {
     section.classList.remove('hidden');
 
     list.innerHTML = upcoming.map(m => {
-        const hc = teamMap[m.mandante]?.cor || '#888';
-        const ac = teamMap[m.visitante]?.cor || '#888';
-        const dateStr = m.data_hora ? formatDate(m.data_hora) : `Rodada ${m.rodada}`;
+        const ht = teamMap[m.mandante] || { cor: '#888' };
+        const at = teamMap[m.visitante] || { cor: '#888' };
+        const dateStr = m.data_hora ? formatDate(m.data_hora) : 'Data: a definir';
+        const roundStr = `Rodada ${m.rodada}`;
         return `<div class="next-match-card">
-            <span class="next-match-date">${dateStr}</span>
+            <div class="next-match-meta">
+                <span class="next-match-round">${roundStr}</span>
+                <span class="next-match-date">${dateStr}</span>
+            </div>
             <div class="next-match-teams">
-                <span class="next-match-team"><span class="team-color" style="background:${hc}"></span>${m.mandante}</span>
+                <span class="next-match-team">${teamColorPill(ht, 14)} ${m.mandante}</span>
                 <span class="next-match-vs">vs</span>
-                <span class="next-match-team"><span class="team-color" style="background:${ac}"></span>${m.visitante}</span>
+                <span class="next-match-team">${teamColorPill(at, 14)} ${m.visitante}</span>
             </div>
         </div>`;
     }).join('');
@@ -541,7 +565,7 @@ function buildTeamCardHtml(team) {
     if (jogadores.length === 0) return null;
 
     let html = `<div class="team-card-header">
-        <span class="team-card-color" style="background:${team.cor}"></span>
+        ${teamColorPill(team, 20)}
         <span class="team-card-name">${team.nome}</span>
         <span class="team-card-abbr">${team.sigla}</span>
     </div>
@@ -661,7 +685,7 @@ function renderAdminPanel() {
         const playerCount = (t.jogadores || []).length;
         const playerBadge = playerCount > 0 ? `<span class="badge badge-sm">${playerCount} jogador${playerCount > 1 ? 'es' : ''}</span>` : '';
         teamsHtml += `<div class="admin-list-item">
-            <span class="color-dot" style="background:${t.cor}"></span>
+            ${teamColorPill(t, 20)}
             <span class="admin-item-label">${t.nome} <small>(${t.sigla})</small> ${playerBadge}</span>
             <button class="btn btn-secondary btn-sm admin-edit-players" data-id="${t.id}" title="Editar jogadores">👥</button>
             <button class="btn btn-danger btn-sm admin-delete-team" data-id="${t.id}">🗑️</button>
@@ -877,10 +901,17 @@ async function saveAbout() {
 async function addTeam() {
     const nome = $('#admin-team-name').value.trim();
     const sigla = $('#admin-team-abbr').value.trim().toUpperCase();
-    const cor = $('#admin-team-color').value;
+    const c1 = $('#admin-team-color1').value;
+    const c2 = $('#admin-team-color2').value;
+    const c3 = $('#admin-team-color3').value;
+    // Deduplicate: only add extra colors if they differ from previous
+    const cores = [c1];
+    if (c2 !== c1) cores.push(c2);
+    if (c3 !== c1 && c3 !== c2) cores.push(c3);
+    const cor = c1; // keep primary color for legacy compatibility
     if (!nome || !sigla) { showToast('Preencha nome e sigla do time.', 'error'); return; }
     try {
-        await addDoc(collection(db, 'times'), { nome, sigla, cor, jogadores: [] });
+        await addDoc(collection(db, 'times'), { nome, sigla, cor, cores, jogadores: [] });
         $('#admin-team-name').value = '';
         $('#admin-team-abbr').value = '';
         showToast(`Time "${nome}" adicionado!`);
@@ -1038,8 +1069,10 @@ async function addMatch() {
         await addDoc(collection(db, 'jogos'), {
             rodada, mandante, visitante,
             gols_mandante: null, gols_visitante: null, ordem,
+            data_hora: $('#admin-match-date').value || null,
         });
         $('#admin-match-round').value = '';
+        $('#admin-match-date').value = '';
         showToast('Partida adicionada!');
     } catch (e) {
         showError('Erro ao adicionar partida: ' + e.message);
