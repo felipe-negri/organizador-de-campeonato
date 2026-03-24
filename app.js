@@ -488,20 +488,17 @@ function formatDate(iso) {
     return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-// Returns an inline HTML element showing 1–3 color segments in a single pill
-function teamColorPill(t, size = 16) {
+// Returns a thin vertical color bar (4px wide, segmented for multiple colors)
+function teamColorPill(t, height = 16) {
     const cores = t.cores || (t.cor ? [t.cor] : ['#888']);
-    const w = size; const h = size;
-    const seg = Math.floor(w / cores.length);
+    const w = 4;
+    const segH = Math.floor(height / cores.length);
     const segs = cores.map((c, i) => {
-        const x = i * seg;
-        const sw = (i === cores.length - 1) ? w - x : seg; // last segment fills remainder
-        return `<rect x="${x}" y="0" width="${sw}" height="${h}" fill="${c}"/>`;
+        const y = i * segH;
+        const sh = (i === cores.length - 1) ? height - y : segH;
+        return `<rect x="0" y="${y}" width="${w}" height="${sh}" fill="${c}"/>`;
     }).join('');
-    const r = size / 4;
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" style="border-radius:${r}px;vertical-align:middle;flex-shrink:0">`
-        + `<clipPath id="cp${cores.join('')}"><rect width="${w}" height="${h}" rx="${r}" ry="${r}"/></clipPath>`
-        + `<g clip-path="url(#cp${cores.join('')})">${segs}</g></svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${height}" style="border-radius:2px;vertical-align:middle;flex-shrink:0;margin-right:6px">${segs}</svg>`;
 }
 
 function renderNextMatches() {
