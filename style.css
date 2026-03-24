@@ -277,6 +277,18 @@ main {
     margin-bottom: 1rem;
 }
 
+.section-header-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.badge-round {
+    background: var(--bg-secondary, rgba(255,255,255,0.07));
+    color: var(--text-muted);
+}
+
 .section-header h2 {
     font-size: 1.15rem;
     font-weight: 700;

@@ -262,6 +262,13 @@ function renderStandings() {
     const totalPlayed = state.matches.filter(m => m.gols_mandante != null).length;
     $('#matches-played-badge').textContent = `${totalPlayed}/${state.matches.length} jogos`;
 
+    if (state.totalRounds > 0) {
+        const currentRound = findCurrentRound();
+        const roundBadge = $('#current-round-badge');
+        roundBadge.textContent = `Rodada ${currentRound} de ${state.totalRounds}`;
+        roundBadge.classList.remove('hidden');
+    }
+
     let html = '';
     state.standings.forEach((t, i) => {
         const pos = i + 1;
