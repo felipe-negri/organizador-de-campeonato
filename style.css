@@ -1619,7 +1619,7 @@ footer {
     width: 64px;
     height: 64px;
     object-fit: cover;
-    border-radius: 50%;
+    border-radius: 8px;
     border: 2px solid var(--border);
     background: var(--card-bg);
     flex-shrink: 0;
@@ -1647,3 +1647,29 @@ footer {
     font-size: .8rem;
     padding: .3rem .6rem;
 }
+
+/* ─── Crop Modal ─────────────────────────────────────────────────────────── */
+.crop-modal-content {
+    max-width: 340px;
+    text-align: center;
+}
+
+.crop-hint {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0 0 0.75rem;
+}
+
+#crop-canvas {
+    display: block;
+    width: 300px;
+    height: 300px;
+    margin: 0 auto 0.25rem;
+    border-radius: 8px;
+    border: 2px solid var(--border);
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+
+#crop-canvas:active { cursor: grabbing; }

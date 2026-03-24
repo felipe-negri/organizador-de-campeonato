@@ -120,6 +120,20 @@
         </div>
     </div>
 
+    <!-- Crop Modal -->
+    <div id="crop-modal" class="modal hidden" style="z-index:1100">
+        <div class="modal-overlay"></div>
+        <div class="modal-content crop-modal-content">
+            <h2>✂️ Enquadrar foto</h2>
+            <p class="crop-hint">🖱️ Arraste para mover &nbsp;·&nbsp; Scroll / pinça para zoom</p>
+            <canvas id="crop-canvas"></canvas>
+            <div class="modal-actions">
+                <button id="crop-confirm" class="btn btn-primary">✅ Confirmar</button>
+                <button id="crop-cancel" class="btn btn-secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- View Team Card Modal (Mobile) -->
     <div id="team-card-modal" class="modal hidden">
         <div class="modal-overlay"></div>
