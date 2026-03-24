@@ -1876,3 +1876,9 @@ footer {
 }
 
 .logo-popup.visible { display: block; }
+
+.admin-match-date {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-left: 0.4rem;
+}

@@ -116,6 +116,7 @@ const state = {
     theme: localStorage.getItem('theme') || 'dark',
     dataReady: { config: false, teams: false, matches: false, knockout: false },
     editingMatch: null,
+    editingMatchId: null,
     editingBracket: null,
     editingTeamId: null,
 };
@@ -716,14 +717,60 @@ function renderAdminPanel() {
             .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
             .forEach(m => {
                 const score = m.gols_mandante != null ? `${m.gols_mandante} × ${m.gols_visitante}` : 'vs';
+                const dateStr = m.data_hora ? `<span class="admin-match-date">📅 ${formatDate(m.data_hora)}</span>` : '';
                 matchesHtml += `<div class="admin-list-item">
-                    <span class="admin-item-label">${m.mandante} <em>${score}</em> ${m.visitante}</span>
+                    <span class="admin-item-label">${m.mandante} <em>${score}</em> ${m.visitante} ${dateStr}</span>
+                    <button class="btn btn-secondary btn-sm admin-edit-match" data-id="${m.id}" title="Editar partida">✏️</button>
+                    <button class="btn btn-secondary btn-sm admin-edit-score" data-id="${m.id}" title="Editar placar">⚽</button>
                     <button class="btn btn-danger btn-sm admin-delete-match" data-id="${m.id}">🗑️</button>
                 </div>`;
             });
     });
     $('#admin-matches-list').innerHTML = matchesHtml || '<p class="hint">Nenhuma partida cadastrada.</p>';
     $$('.admin-delete-match').forEach(btn => btn.addEventListener('click', () => deleteMatch(btn.dataset.id)));
+    $$('.admin-edit-score').forEach(btn => btn.addEventListener('click', () => openEditScoreModal(btn.dataset.id)));
+    $$('.admin-edit-match').forEach(btn => btn.addEventListener('click', () => openEditMatchModal(btn.dataset.id)));
+}
+
+// ─── Edit Match Modal (Admin) ─────────────────────────────────────────────────
+function openEditMatchModal(matchId) {
+    const m = state.matches.find(x => x.id === matchId);
+    if (!m) return;
+    state.editingMatchId = matchId;
+    const teamOptions = state.teams.map(t => `<option value="${t.nome}">${t.nome}</option>`).join('');
+    $('#edit-match-home-sel').innerHTML = teamOptions;
+    $('#edit-match-away-sel').innerHTML = teamOptions;
+    $('#edit-match-round').value = m.rodada || '';
+    $('#edit-match-home-sel').value = m.mandante || '';
+    $('#edit-match-away-sel').value = m.visitante || '';
+    $('#edit-match-modal-date').value = m.data_hora || '';
+    $('#edit-match-modal').classList.remove('hidden');
+    $('#edit-match-round').focus();
+}
+
+function closeEditMatchModal() {
+    $('#edit-match-modal').classList.add('hidden');
+    state.editingMatchId = null;
+}
+
+async function saveEditMatch() {
+    const id = state.editingMatchId;
+    if (!id) return;
+    const rodada = parseInt($('#edit-match-round').value);
+    const mandante = $('#edit-match-home-sel').value;
+    const visitante = $('#edit-match-away-sel').value;
+    if (!rodada || !mandante || !visitante) { showToast('Preencha todos os campos.', 'error'); return; }
+    if (mandante === visitante) { showToast('Mandante e visitante devem ser times diferentes.', 'error'); return; }
+    try {
+        await updateDoc(doc(db, 'jogos', id), {
+            rodada, mandante, visitante,
+            data_hora: $('#edit-match-modal-date').value || null,
+        });
+        closeEditMatchModal();
+        showToast('Partida atualizada!');
+    } catch (e) {
+        showError('Erro ao atualizar partida: ' + e.message);
+    }
 }
 
 // ─── Edit Score Modal ─────────────────────────────────────────────────────────
@@ -1286,6 +1333,10 @@ function init() {
     $('#login-modal').querySelector('.modal-overlay').addEventListener('click', closeLoginModal);
     $('#login-password').addEventListener('keydown', e => { if (e.key === 'Enter') adminLogin(); });
 
+    $('#edit-match-save').addEventListener('click', saveEditMatch);
+    $('#edit-match-cancel').addEventListener('click', closeEditMatchModal);
+    $('#edit-match-modal').querySelector('.modal-overlay').addEventListener('click', closeEditMatchModal);
+
     $('#edit-score-save').addEventListener('click', saveEditScore);
     $('#edit-score-clear').addEventListener('click', async () => {
         const m = state.editingMatch;
@@ -1319,6 +1370,10 @@ function init() {
     $('#edit-team-save').addEventListener('click', saveEditTeam);
     $('#edit-team-cancel').addEventListener('click', closeEditTeamModal);
     $('#edit-team-modal').querySelector('.modal-overlay').addEventListener('click', closeEditTeamModal);
+
+    $('#edit-match-save').addEventListener('click', saveEditMatch);
+    $('#edit-match-cancel').addEventListener('click', closeEditMatchModal);
+    $('#edit-match-modal').querySelector('.modal-overlay').addEventListener('click', closeEditMatchModal);
 
     // Crop modal
     $('#crop-confirm').addEventListener('click', confirmCrop);
