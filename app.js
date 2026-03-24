@@ -539,7 +539,7 @@ function renderNextMatches() {
     list.innerHTML = upcoming.map(m => {
         const ht = teamMap[m.mandante] || { cor: '#888' };
         const at = teamMap[m.visitante] || { cor: '#888' };
-        const dateStr = m.data_hora ? formatDate(m.data_hora) : 'A definir';
+        const dateStr = m.data_hora ? formatDate(m.data_hora) : '📅 A definir';
         const roundStr = `Rodada ${m.rodada}`;
         return `<div class="next-match-card">
             <div class="next-match-meta">
