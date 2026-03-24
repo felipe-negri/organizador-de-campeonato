@@ -941,12 +941,49 @@ footer {
         grid-template-columns: 1fr;
     }
 
+    /* Bracket vertical on mobile */
+    .bracket-wrapper {
+        overflow-x: visible;
+    }
+
     .bracket {
-        gap: 1rem;
+        flex-direction: column;
+        gap: 0;
+        min-width: unset;
+        align-items: stretch;
     }
 
     .bracket-round {
-        min-width: 160px;
+        min-width: unset;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        margin-bottom: 0.75rem;
+    }
+
+    .bracket-round-title {
+        background: var(--bg-secondary, rgba(255,255,255,0.05));
+        margin-bottom: 0;
+        padding: 0.5rem 0.75rem;
+        text-align: left;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .bracket-matches {
+        padding: 0.5rem;
+        gap: 0.5rem;
+    }
+
+    .bracket-match {
+        max-width: 100%;
+    }
+
+    .bracket-team-name {
+        max-width: unset;
+    }
+
+    .bracket-connector {
+        display: none;
     }
 
     .modal-content {
