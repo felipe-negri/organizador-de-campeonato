@@ -52,6 +52,10 @@
                 </label>
                 <span class="tiebreak-hint">Vitória no tiebreak = 2 pts / Derrota no tiebreak = 1 pt</span>
             </div>
+            <div class="match-date-row">
+                <label for="edit-match-date">📅 Data e hora:</label>
+                <input type="datetime-local" id="edit-match-date">
+            </div>
             <div class="modal-actions">
                 <button id="edit-score-save" class="btn btn-primary">Salvar</button>
                 <button id="edit-score-clear" class="btn btn-secondary">Limpar Placar</button>
@@ -98,6 +102,10 @@
                         <input type="number" id="edit-bracket-pen2" min="0" max="99" placeholder="-">
                     </div>
                 </div>
+            </div>
+            <div class="match-date-row">
+                <label for="edit-bracket-date">📅 Data e hora:</label>
+                <input type="datetime-local" id="edit-bracket-date">
             </div>
             <div class="modal-actions">
                 <button id="edit-bracket-save" class="btn btn-primary">Salvar</button>
@@ -171,7 +179,7 @@
         <div class="nav-content">
             <button class="nav-tab active" data-tab="classificacao">
                 <span class="tab-icon">📊</span>
-                <span class="tab-label">Classificação</span>
+                <span class="tab-label">Geral</span>
             </button>
             <button class="nav-tab" data-tab="jogos">
                 <span class="tab-icon">⚽</span>
@@ -180,6 +188,10 @@
             <button class="nav-tab" data-tab="mata-mata">
                 <span class="tab-icon">🏆</span>
                 <span class="tab-label">Mata-Mata</span>
+            </button>
+            <button class="nav-tab" data-tab="sobre">
+                <span class="tab-icon">ℹ️</span>
+                <span class="tab-label">Sobre</span>
             </button>
             <button class="nav-tab" data-tab="regras">
                 <span class="tab-icon">📖</span>
@@ -215,10 +227,10 @@
             <button id="error-close" class="btn-icon btn-small">✕</button>
         </div>
 
-        <!-- Classificação -->
+        <!-- Geral (Classificação) -->
         <section id="tab-classificacao" class="tab-content">
             <div class="section-header">
-                <h2>Classificação</h2>
+                <h2>Geral</h2>
                 <span class="badge" id="matches-played-badge"></span>
             </div>
             <div class="table-responsive">
@@ -250,6 +262,10 @@
                     <span class="legend-color qualify"></span> Classificado para o mata-mata
                 </span>
             </div>
+            <div id="next-matches-section" class="next-matches-section hidden">
+                <h3 class="next-matches-title">📅 Próximos Jogos</h3>
+                <div id="next-matches-list" class="next-matches-list"></div>
+            </div>
         </section>
 
         <!-- Jogos -->
@@ -279,6 +295,18 @@
             </div>
             <div class="bracket-wrapper">
                 <div id="bracket-container" class="bracket"></div>
+            </div>
+        </section>
+
+        <!-- Sobre -->
+        <section id="tab-sobre" class="tab-content hidden">
+            <div class="section-header">
+                <h2>ℹ️ Sobre o Campeonato</h2>
+            </div>
+            <div class="about-card">
+                <div id="about-content" class="about-body">
+                    <p class="hint">Nenhuma informação cadastrada ainda.</p>
+                </div>
             </div>
         </section>
 
@@ -318,6 +346,17 @@
                         <input type="number" id="admin-classified" min="1" max="32" value="8" style="max-width:100px;">
                     </div>
                     <button id="admin-save-config" class="btn btn-primary">Salvar</button>
+                </div>
+            </div>
+
+            <div class="admin-section">
+                <h3 class="admin-section-title">ℹ️ Sobre o Campeonato</h3>
+                <div class="admin-form">
+                    <div class="admin-field">
+                        <label for="admin-about">Texto de apresentação (suporta quebras de linha):</label>
+                        <textarea id="admin-about" rows="8" placeholder="Ex: Bem-vindo ao campeonato! Aqui você encontra..."></textarea>
+                    </div>
+                    <button id="admin-save-about" class="btn btn-primary">Salvar Sobre</button>
                 </div>
             </div>
 

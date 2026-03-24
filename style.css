@@ -1673,3 +1673,108 @@ footer {
 }
 
 #crop-canvas:active { cursor: grabbing; }
+
+/* ─── Próximos Jogos ──────────────────────────────────────────────────────── */
+.next-matches-section {
+    margin-top: 1.5rem;
+}
+
+.next-matches-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--text);
+}
+
+.next-matches-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.next-match-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.65rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.next-match-date {
+    font-size: 0.78rem;
+    color: var(--primary);
+    font-weight: 500;
+    white-space: nowrap;
+    min-width: 120px;
+}
+
+.next-match-teams {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex: 1;
+}
+
+.next-match-team {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.next-match-vs {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+/* ─── Match Date Info ─────────────────────────────────────────────────────── */
+.match-date-info {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-top: 0.35rem;
+}
+
+.match-date-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.75rem 0 0;
+    flex-wrap: wrap;
+}
+
+.match-date-row label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.match-date-row input[type="datetime-local"] {
+    flex: 1;
+    min-width: 180px;
+    padding: 0.4rem 0.6rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text);
+    font-size: 0.875rem;
+}
+
+/* ─── Sobre ──────────────────────────────────────────────────────────────── */
+.about-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+}
+
+.about-body {
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: var(--text);
+}

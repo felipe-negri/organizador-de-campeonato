@@ -245,9 +245,11 @@ function renderAll() {
     $('#championship-name').classList.toggle('hidden', !!hideName);
     document.title = hideName ? 'Dashboard' : `Dashboard - ${name}`;
     renderStandings();
+    renderNextMatches();
     renderMatches();
     renderBracket();
     renderRules();
+    renderAbout();
     if (state.isAdmin) renderAdminPanel();
     $('#last-updated').textContent = new Date().toLocaleString('pt-BR');
 }
@@ -348,6 +350,7 @@ function renderMatches() {
                     <span class="match-team-name ${awayWinner}">${m.visitante}</span>
                 </div>
             </div>
+            ${m.data_hora ? `<div class="match-date-info">📅 ${formatDate(m.data_hora)}</div>` : ''}
             ${state.isAdmin ? `<button class="edit-match-btn" data-id="${m.id}" title="Editar placar">✏️ editar</button>` : ''}
         </div>`;
     });
@@ -454,6 +457,7 @@ function renderBracketMatch(m) {
             <span class="bracket-team-name">${m.time2 || 'A definir'}</span>
             <span class="bracket-team-score">${s2}</span>
         </div>
+        ${m.data_hora ? `<div class="match-date-info">📅 ${formatDate(m.data_hora)}</div>` : ''}
         ${editBtn}
     </div>`;
 }
@@ -468,6 +472,64 @@ function renderRules() {
         return;
     }
     const escaped = rulesText
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+    container.innerHTML = `<p>${escaped}</p>`;
+}
+
+function formatDate(iso) {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (isNaN(d)) return null;
+    return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function renderNextMatches() {
+    const section = $('#next-matches-section');
+    const list = $('#next-matches-list');
+    if (!section || !list) return;
+
+    const teamMap = {};
+    state.teams.forEach(t => { teamMap[t.nome] = t; });
+
+    const now = new Date();
+    const upcoming = state.matches
+        .filter(m => m.gols_mandante == null)
+        .sort((a, b) => {
+            if (a.data_hora && b.data_hora) return new Date(a.data_hora) - new Date(b.data_hora);
+            if (a.data_hora) return -1;
+            if (b.data_hora) return 1;
+            return (a.rodada - b.rodada) || ((a.ordem || 0) - (b.ordem || 0));
+        })
+        .slice(0, 3);
+
+    if (upcoming.length === 0) { section.classList.add('hidden'); return; }
+    section.classList.remove('hidden');
+
+    list.innerHTML = upcoming.map(m => {
+        const hc = teamMap[m.mandante]?.cor || '#888';
+        const ac = teamMap[m.visitante]?.cor || '#888';
+        const dateStr = m.data_hora ? formatDate(m.data_hora) : `Rodada ${m.rodada}`;
+        return `<div class="next-match-card">
+            <span class="next-match-date">${dateStr}</span>
+            <div class="next-match-teams">
+                <span class="next-match-team"><span class="team-color" style="background:${hc}"></span>${m.mandante}</span>
+                <span class="next-match-vs">vs</span>
+                <span class="next-match-team"><span class="team-color" style="background:${ac}"></span>${m.visitante}</span>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderAbout() {
+    const text = state.config.sobre || '';
+    const container = $('#about-content');
+    if (!container) return;
+    if (!text.trim()) {
+        container.innerHTML = '<p class="hint">Nenhuma informação cadastrada ainda.</p>';
+        return;
+    }
+    const escaped = text
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/\n/g, '<br>');
     container.innerHTML = `<p>${escaped}</p>`;
@@ -585,6 +647,7 @@ function renderAdminPanel() {
     $('#admin-hide-name').checked = !!state.config.ocultar_nome;
     $('#admin-classified').value = state.config.classificados || 8;
     $('#admin-rules').value = state.config.regras || '';
+    $('#admin-about').value = state.config.sobre || '';
 
     const datalist = $('#teams-datalist');
     if (datalist) datalist.innerHTML = state.teams.map(t => `<option value="${t.nome}">`).join('');
@@ -637,6 +700,7 @@ function openEditScoreModal(matchId) {
     $('#edit-home-goals').value = m.gols_mandante != null ? m.gols_mandante : '';
     $('#edit-away-goals').value = m.gols_visitante != null ? m.gols_visitante : '';
     $('#edit-tiebreak').checked = !!m.tiebreak;
+    $('#edit-match-date').value = m.data_hora || '';
     $('#edit-score-modal').classList.remove('hidden');
     $('#edit-home-goals').focus();
 }
@@ -657,6 +721,7 @@ async function saveEditScore() {
             gols_mandante: hg !== '' ? parseInt(hg) : null,
             gols_visitante: ag !== '' ? parseInt(ag) : null,
             tiebreak: tb,
+            data_hora: $('#edit-match-date').value || null,
         });
         closeEditScoreModal();
         showToast('Placar salvo!');
@@ -676,6 +741,7 @@ function openEditBracketModal(matchId) {
     $('#edit-bracket-goals2').value = m.gols2 != null ? m.gols2 : '';
     $('#edit-bracket-pen1').value = m.pen1 != null ? m.pen1 : '';
     $('#edit-bracket-pen2').value = m.pen2 != null ? m.pen2 : '';
+    $('#edit-bracket-date').value = m.data_hora || '';
     $('#edit-bracket-modal').classList.remove('hidden');
     $('#edit-bracket-team1').focus();
 }
@@ -700,6 +766,7 @@ async function saveEditBracket() {
             gols2: g2 !== '' ? parseInt(g2) : null,
             pen1: p1 !== '' ? parseInt(p1) : null,
             pen2: p2 !== '' ? parseInt(p2) : null,
+            data_hora: $('#edit-bracket-date').value || null,
         });
         closeEditBracketModal();
         showToast('Partida salva!');
@@ -794,6 +861,16 @@ async function saveRules() {
         showToast('Regras salvas!');
     } catch (e) {
         showError('Erro ao salvar regras: ' + e.message);
+    }
+}
+
+async function saveAbout() {
+    const sobre = $('#admin-about').value;
+    try {
+        await setDoc(doc(db, 'config', 'main'), { ...state.config, sobre });
+        showToast('Sobre salvo!');
+    } catch (e) {
+        showError('Erro ao salvar sobre: ' + e.message);
     }
 }
 
@@ -1194,6 +1271,7 @@ function init() {
 
     $('#admin-save-config').addEventListener('click', saveConfig);
     $('#admin-save-rules').addEventListener('click', saveRules);
+    $('#admin-save-about').addEventListener('click', saveAbout);
     $('#admin-add-team').addEventListener('click', addTeam);
     $('#admin-add-match').addEventListener('click', addMatch);
     $('#admin-init-bracket').addEventListener('click', initBracket);
