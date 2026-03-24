@@ -1,6 +1,6 @@
 {
   "name": "Brasileirão Futevôlei",
-  "short_name": "Futevôlei",
+  "short_name": "Brasileirão Futevôlei",
   "description": "Acompanhe classificação, jogos e mata-mata do campeonato",
   "start_url": "./",
   "display": "standalone",
