@@ -1303,8 +1303,6 @@ footer {
     pointer-events: none;
     user-select: none;
     border-radius: 50%;
-    /* Remove black background visually on dark/light themes */
-    mix-blend-mode: screen;
 }
 
 .checkbox-label {
