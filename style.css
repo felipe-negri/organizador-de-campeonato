@@ -1805,3 +1805,74 @@ footer {
     color: var(--text-muted) !important;
     font-style: italic;
 }
+
+/* ─── Header Logo ─────────────────────────────────────────────────────────── */
+#header-logo-btn {
+    cursor: pointer;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+#header-logo-btn:hover { transform: scale(1.1); opacity: 0.85; }
+
+/* ─── Logo Lightbox ───────────────────────────────────────────────────────── */
+.logo-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+    cursor: pointer;
+    animation: fadeIn 0.2s ease;
+}
+
+.logo-lightbox.hidden { display: none; }
+
+.logo-lightbox-img {
+    max-width: min(80vw, 480px);
+    max-height: min(80vh, 480px);
+    object-fit: contain;
+    border-radius: var(--radius-lg);
+    animation: scaleIn 0.2s ease;
+    pointer-events: none;
+}
+
+@keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scaleIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* ─── Header Logo Popup ───────────────────────────────────────────────────── */
+.header-logo-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.header-logo {
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.header-logo:hover { opacity: 0.85; }
+
+.logo-popup {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 0;
+    z-index: 500;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 0.75rem;
+    box-shadow: var(--shadow-lg);
+    animation: modalIn 0.15s ease;
+}
+
+.logo-popup img {
+    display: block;
+    width: 220px;
+    height: 220px;
+    object-fit: contain;
+}
+
+.logo-popup.visible { display: block; }

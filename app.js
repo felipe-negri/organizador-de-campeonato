@@ -1367,6 +1367,12 @@ function init() {
     $('#admin-init-bracket').addEventListener('click', initBracket);
     $('#admin-generate-rounds').addEventListener('click', generateRoundRobin);
 
+    // Logo lightbox
+    const lightbox = $('#logo-lightbox');
+    $('#header-logo-btn').addEventListener('click', () => lightbox.classList.remove('hidden'));
+    lightbox.addEventListener('click', () => lightbox.classList.add('hidden'));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') lightbox.classList.add('hidden'); });
+
     $('#prev-round').addEventListener('click', () => {
         if (state.currentRound > 1) { state.currentRound--; renderMatches(); }
     });

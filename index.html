@@ -190,7 +190,12 @@
     <header>
         <div class="header-content">
             <div class="header-left">
-                <img src="logo-sem-fundo.png" alt="Logo" class="header-logo">
+                <div class="header-logo-wrap">
+                    <img src="logo-sem-fundo.png" alt="Logo" class="header-logo" id="header-logo-btn" title="Ver logo">
+                    <div class="logo-popup" id="logo-popup">
+                        <img src="logo-sem-fundo.png" alt="Logo grande">
+                    </div>
+                </div>
                 <h1 id="championship-name">Campeonato</h1>
             </div>
             <div class="header-actions">
@@ -450,6 +455,11 @@
 
     <!-- Toast container -->
     <div id="toast-container" class="toast-container"></div>
+
+    <!-- Logo Lightbox -->
+    <div id="logo-lightbox" class="logo-lightbox hidden">
+        <img src="logo-sem-fundo.png" alt="Logo" class="logo-lightbox-img">
+    </div>
 
     <script type="module" src="app.js"></script>
 </body>
