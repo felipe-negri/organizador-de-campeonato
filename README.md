@@ -1,7 +1,7 @@
 # 🏆 Organizador de Campeonato
 
 Dashboard interativo para campeonatos com fase de pontos corridos e mata-mata.  
-Os dados ficam em uma planilha do Google Sheets e o dashboard é hospedado no GitHub Pages.
+Dados em **tempo real** via Firebase Firestore. Hospedado no GitHub Pages.
 
 **[➡️ Abrir Dashboard](https://felipe-negri.github.io/organizador-de-campeonato/)**
 
@@ -12,123 +12,98 @@ Os dados ficam em uma planilha do Google Sheets e o dashboard é hospedado no Gi
 - 📊 **Classificação** — Tabela de pontos corridos com cálculo automático
 - ⚽ **Jogos** — Navegação por rodadas com placar de cada partida
 - 🏆 **Mata-Mata** — Bracket visual de quartas → semis → final
+- 🔴 **Tempo real** — Todos os espectadores veem os placares atualizando ao vivo
+- 🔐 **Admin protegido** — Apenas o organizador (logado) pode editar dados
 - 🌙 **Tema escuro/claro** — Escuro como padrão, alternável pelo botão
 - 📱 **Responsivo** — Funciona em celular, tablet e desktop
-- 🔒 **Sem permissões expostas** — Usa planilha publicada na web (somente leitura)
-- ⚙️ **Configurável** — Cole o link da planilha direto no dashboard
 
 ---
 
-## 📋 Como Configurar a Planilha
+## 🚀 Configuração do Firebase
 
-### 1. Crie uma nova planilha no Google Sheets
+### 1. Projeto Firebase (já criado)
 
-Acesse [sheets.google.com](https://sheets.google.com) e crie uma nova planilha.
+O projeto está em: `organizador-de-campeonato` no Firebase Console.
 
-### 2. Crie as 4 abas (exatamente com estes nomes):
+### 2. Adicionar usuário administrador
 
-| Aba | Descrição |
-|-----|----------|
-| `Config` | Configurações gerais do campeonato |
-| `Times` | Lista de times participantes |
-| `Fase_Grupos` | Todos os jogos da fase de pontos corridos |
-| `Mata_Mata` | Jogos do mata-mata (quartas, semis, final) |
+1. Acesse o [Firebase Console](https://console.firebase.google.com)
+2. Vá em **Authentication → Users → Adicionar usuário**
+3. Cadastre seu email e senha
+4. Esse login será usado para acessar o painel admin no dashboard
 
-### 3. Preencha cada aba:
+### 3. Configurar regras do Firestore
 
-#### Aba `Config`
+1. No Firebase Console, vá em **Firestore Database → Regras**
+2. Substitua o conteúdo pelo arquivo `firestore.rules` deste repositório:
 
-| Chave | Valor |
-|-------|-------|
-| nome_campeonato | Meu Campeonato 2026 |
-| classificados | 8 |
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
+```
 
-#### Aba `Times`
-
-| Nome | Sigla | Cor |
-|------|-------|-----|
-| Flamengo | FLA | #C62828 |
-| Palmeiras | PAL | #2E7D32 |
-| Santos | SAN | #212121 |
-| São Paulo | SAO | #FF1744 |
-| Corinthians | COR | #000000 |
-| Grêmio | GRE | #1565C0 |
-| Internacional | INT | #B71C1C |
-| Cruzeiro | CRU | #1A237E |
-| Atlético-MG | CAM | #212121 |
-| Fluminense | FLU | #880E4F |
-| Vasco | VAS | #212121 |
-| Botafogo | BOT | #1B1B1B |
-
-> 💡 Coloque quantos times quiser. A coluna `Cor` aceita qualquer cor em hexadecimal.
-
-#### Aba `Fase_Grupos`
-
-| Rodada | Mandante | Visitante | Gols_Mandante | Gols_Visitante |
-|--------|----------|-----------|---------------|----------------|
-| 1 | Flamengo | Palmeiras | 2 | 1 |
-| 1 | Santos | Corinthians | 0 | 0 |
-| 1 | São Paulo | Grêmio | 1 | 3 |
-| 2 | Palmeiras | Santos | 2 | 2 |
-| ... | ... | ... | ... | ... |
-
-> 💡 Deixe `Gols_Mandante` e `Gols_Visitante` em branco para jogos ainda não realizados.
-
-#### Aba `Mata_Mata`
-
-| Fase | Time1 | Time2 | Gols1 | Gols2 | Penaltis1 | Penaltis2 |
-|------|-------|-------|-------|-------|-----------|----------|
-| quartas | Flamengo | Botafogo | 2 | 1 | | |
-| quartas | Palmeiras | Vasco | 3 | 0 | | |
-| quartas | Santos | Cruzeiro | 1 | 1 | 4 | 3 |
-| quartas | Grêmio | São Paulo | | | | |
-| semis | | | | | | |
-| semis | | | | | | |
-| final | | | | | | |
-
-> 💡 Valores de `Fase`: `quartas`, `semis`, `final`  
-> 💡 Colunas `Penaltis1` e `Penaltis2` são opcionais (só para empates no mata-mata).  
-> 💡 Deixe `Time1`, `Time2`, `Gols1`, `Gols2` em branco para jogos a definir.
-
-### 4. Publique a planilha na web
-
-1. Na planilha, vá em **Arquivo → Compartilhar → Publicar na web**
-2. Selecione **Documento inteiro** e formato **Página da web**
 3. Clique em **Publicar**
-4. Copie o link da planilha (da barra de endereço, não o link de publicação)
 
-### 5. Configure no Dashboard
+### 4. Ativar GitHub Pages
+
+1. Vá em **Settings → Pages** do repositório
+2. Source: `Deploy from a branch` → `main` / `/(root)`
+3. Clique em **Save**
+
+---
+
+## 🎮 Como usar o Dashboard
+
+### Primeiro acesso (Admin)
 
 1. Abra o dashboard
-2. Clique em ⚙️ (Configurações)
-3. Cole o link da planilha
-4. Clique em **Salvar e Carregar**
+2. Clique em **🔐** no canto superior direito (ou "Entrar como Admin")
+3. Faça login com o email/senha cadastrado no Firebase
+4. A aba **⚙️ Admin** aparecerá na navegação
 
----
+### Configurar o campeonato (Admin)
 
-## 🚀 Deploy no GitHub Pages
+Na aba Admin:
 
-1. Vá nas **Settings** do repositório
-2. Na seção **Pages**, selecione:
-   - **Source**: Deploy from a branch
-   - **Branch**: `main` / `/ (root)`
-3. Clique em **Save**
-4. Aguarde alguns minutos e acesse: `https://SEU_USUARIO.github.io/organizador-de-campeonato/`
+1. **Configurações** — Nome do campeonato e quantos times se classificam para o mata-mata
+2. **Times** — Adicione cada time com nome, sigla e cor
+3. **Partidas** — Adicione as partidas da fase de grupos (rodada, mandante, visitante)
+4. **Mata-Mata** — Clique em "Inicializar Bracket" para criar a estrutura (quartas + semis + final)
+
+### Lançar resultados (Admin)
+
+- **Fase de grupos:** Na aba Jogos, clique no botão ✏️ de qualquer partida
+- **Mata-Mata:** Na aba Mata-Mata, clique no botão ✏️ de cada partida do bracket
+- Os resultados aparecem em **tempo real** para todos os espectadores
+
+### Visão dos espectadores
+
+Basta abrir o link do GitHub Pages — os dados atualizam automaticamente ao vivo, sem precisar de login.
 
 ---
 
 ## 🛠️ Tecnologias
 
 - HTML5 + CSS3 + JavaScript puro (sem framework)
-- [Papa Parse](https://www.papaparse.com/) para parsing de CSV
+- [Firebase Firestore](https://firebase.google.com/docs/firestore) — banco de dados em tempo real
+- [Firebase Authentication](https://firebase.google.com/docs/auth) — login do administrador
 - [Google Fonts (Inter)](https://fonts.google.com/specimen/Inter)
-- Google Sheets como "banco de dados" (publicado na web, sem API key)
+- GitHub Pages — hospedagem gratuita
 
 ---
 
-## 📌 Dicas
+## 📌 Estrutura dos dados no Firestore
 
-- **Atualização automática**: Sempre que alterar a planilha, clique em 🔄 no dashboard para atualizar
-- **Quantos times quiser**: Funciona com qualquer número de times
-- **Múltiplos campeonatos**: Crie planilhas diferentes para cada campeonato
-- **Temas**: O dashboard salva sua preferência de tema no navegador
+| Coleção | Documento/Campos |
+|---------|-----------------|
+| `config/main` | `nome_campeonato`, `classificados` |
+| `times/{id}` | `nome`, `sigla`, `cor` |
+| `jogos/{id}` | `rodada`, `mandante`, `visitante`, `gols_mandante`, `gols_visitante`, `ordem` |
+| `mata_mata/{id}` | `fase`, `time1`, `time2`, `gols1`, `gols2`, `pen1`, `pen2`, `ordem` |

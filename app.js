@@ -1,506 +1,716 @@
-// ============================================
-// Championship Dashboard - App
-// ============================================
+// app.js — Championship Dashboard powered by Firebase
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js';
+import {
+    getFirestore, collection, doc,
+    setDoc, addDoc, updateDoc, deleteDoc,
+    onSnapshot, writeBatch,
+} from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js';
+import {
+    getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
+} from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js';
 
-(function () {
-    'use strict';
+const firebaseConfig = {
+    apiKey: 'AIzaSyDKPy8Q8BNGUqGZ-DFIGyjguS7ZD_r9V8Q',
+    authDomain: 'organizador-de-campeonato.firebaseapp.com',
+    projectId: 'organizador-de-campeonato',
+    storageBucket: 'organizador-de-campeonato.firebasestorage.app',
+    messagingSenderId: '574392149055',
+    appId: '1:574392149055:web:75225d6719270b6b4dc48a',
+};
 
-    // --- State ---
-    const state = {
-        sheetId: localStorage.getItem('sheetId') || '',
-        config: {},
-        teams: [],
-        matches: [],
-        knockout: [],
-        standings: [],
-        currentRound: 1,
-        totalRounds: 0,
-        theme: localStorage.getItem('theme') || 'dark',
-    };
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
 
-    // --- DOM Elements ---
-    const $ = (sel) => document.querySelector(sel);
-    const $$ = (sel) => document.querySelectorAll(sel);
+// ─── State ────────────────────────────────────────────────────────────────────
+const state = {
+    isAdmin: false,
+    config: {},
+    teams: [],
+    matches: [],
+    knockout: [],
+    standings: [],
+    currentRound: 1,
+    totalRounds: 0,
+    roundInitialized: false,
+    theme: localStorage.getItem('theme') || 'dark',
+    dataReady: { config: false, teams: false, matches: false, knockout: false },
+    editingMatch: null,
+    editingBracket: null,
+};
 
-    const dom = {
-        settingsModal: $('#settings-modal'),
-        sheetsInput: $('#sheets-url-input'),
-        saveSettings: $('#save-settings'),
-        cancelSettings: $('#cancel-settings'),
-        settingsBtn: $('#settings-btn'),
-        setupBtn: $('#setup-btn'),
-        setupMessage: $('#setup-message'),
-        themeToggle: $('#theme-toggle'),
-        themeIcon: $('#theme-icon'),
-        refreshBtn: $('#refresh-btn'),
-        loading: $('#loading'),
-        errorBanner: $('#error-message'),
-        errorText: $('#error-text'),
-        errorClose: $('#error-close'),
-        championshipName: $('#championship-name'),
-        standingsBody: $('#standings-body'),
-        matchesPlayed: $('#matches-played-badge'),
-        matchesContainer: $('#matches-container'),
-        prevRound: $('#prev-round'),
-        nextRound: $('#next-round'),
-        roundLabel: $('#round-label'),
-        bracketContainer: $('#bracket-container'),
-        championBanner: $('#champion-banner'),
-        championName: $('#champion-name'),
-        lastUpdated: $('#last-updated'),
-    };
+// ─── DOM helpers ──────────────────────────────────────────────────────────────
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
 
-    // --- Theme ---
-    function applyTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
-        dom.themeIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
-        localStorage.setItem('theme', theme);
-        state.theme = theme;
-    }
+// ─── Theme ────────────────────────────────────────────────────────────────────
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    $('#theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
+    localStorage.setItem('theme', theme);
+    state.theme = theme;
+}
 
-    // --- Google Sheets fetching ---
-    function extractSheetId(input) {
-        input = input.trim();
-        const match = input.match(/\/d\/([a-zA-Z0-9_-]+)/);
-        if (match) return match[1];
-        if (/^[a-zA-Z0-9_-]{20,}$/.test(input)) return input;
-        return null;
-    }
-
-    function sheetCsvUrl(sheetId, tabName) {
-        return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}`;
-    }
-
-    async function fetchSheet(tabName) {
-        const url = sheetCsvUrl(state.sheetId, tabName);
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Erro ao buscar aba "${tabName}" (${res.status})`);
-        const csv = await res.text();
-        const parsed = Papa.parse(csv, { header: true, skipEmptyLines: true });
-        return parsed.data;
-    }
-
-    // --- Data loading ---
-    async function loadAllData() {
-        showLoading(true);
-        hideError();
-        try {
-            const [configData, teamsData, matchesData, knockoutData] = await Promise.all([
-                fetchSheet('Config'),
-                fetchSheet('Times'),
-                fetchSheet('Fase_Grupos'),
-                fetchSheet('Mata_Mata'),
-            ]);
-
-            // Parse config
-            state.config = {};
-            configData.forEach(row => {
-                const key = (row['Chave'] || '').trim();
-                const val = (row['Valor'] || '').trim();
-                if (key) state.config[key] = val;
-            });
-
-            // Parse teams
-            state.teams = teamsData.map(row => ({
-                name: (row['Nome'] || '').trim(),
-                abbr: (row['Sigla'] || '').trim(),
-                color: (row['Cor'] || '#888').trim(),
-            })).filter(t => t.name);
-
-            // Parse matches
-            state.matches = matchesData.map(row => ({
-                round: parseInt(row['Rodada']) || 0,
-                home: (row['Mandante'] || '').trim(),
-                away: (row['Visitante'] || '').trim(),
-                homeGoals: row['Gols_Mandante'] !== undefined && row['Gols_Mandante'] !== '' ? parseInt(row['Gols_Mandante']) : null,
-                awayGoals: row['Gols_Visitante'] !== undefined && row['Gols_Visitante'] !== '' ? parseInt(row['Gols_Visitante']) : null,
-            })).filter(m => m.home && m.away);
-
-            // Parse knockout
-            state.knockout = knockoutData.map(row => ({
-                phase: (row['Fase'] || '').trim().toLowerCase(),
-                team1: (row['Time1'] || '').trim(),
-                team2: (row['Time2'] || '').trim(),
-                goals1: row['Gols1'] !== undefined && row['Gols1'] !== '' ? parseInt(row['Gols1']) : null,
-                goals2: row['Gols2'] !== undefined && row['Gols2'] !== '' ? parseInt(row['Gols2']) : null,
-                pen1: row['Penaltis1'] !== undefined && row['Penaltis1'] !== '' ? parseInt(row['Penaltis1']) : null,
-                pen2: row['Penaltis2'] !== undefined && row['Penaltis2'] !== '' ? parseInt(row['Penaltis2']) : null,
-            })).filter(m => m.phase);
-
-            // Calculate
-            state.totalRounds = Math.max(...state.matches.map(m => m.round), 0);
-            if (state.currentRound < 1) state.currentRound = 1;
-            if (state.currentRound > state.totalRounds) state.currentRound = state.totalRounds;
-
-            // Find current round (last round with results or first without)
-            state.currentRound = findCurrentRound();
-
-            calculateStandings();
-            renderAll();
-
-            dom.lastUpdated.textContent = new Date().toLocaleString('pt-BR');
-        } catch (err) {
-            console.error(err);
-            showError(err.message || 'Erro ao carregar dados');
-        } finally {
-            showLoading(false);
-        }
-    }
-
-    function findCurrentRound() {
-        for (let r = 1; r <= state.totalRounds; r++) {
-            const roundMatches = state.matches.filter(m => m.round === r);
-            const allPlayed = roundMatches.every(m => m.homeGoals !== null);
-            if (!allPlayed) return r;
-        }
-        return state.totalRounds || 1;
-    }
-
-    // --- Standings calculation ---
-    function calculateStandings() {
-        const stats = {};
-        state.teams.forEach(t => {
-            stats[t.name] = {
-                name: t.name,
-                abbr: t.abbr,
-                color: t.color,
-                pts: 0, played: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0,
-            };
-        });
-
-        state.matches.forEach(m => {
-            if (m.homeGoals === null || m.awayGoals === null) return;
-            const home = stats[m.home];
-            const away = stats[m.away];
-            if (!home || !away) return;
-
-            home.played++;
-            away.played++;
-            home.gf += m.homeGoals;
-            home.ga += m.awayGoals;
-            away.gf += m.awayGoals;
-            away.ga += m.homeGoals;
-
-            if (m.homeGoals > m.awayGoals) {
-                home.wins++; home.pts += 3;
-                away.losses++;
-            } else if (m.homeGoals < m.awayGoals) {
-                away.wins++; away.pts += 3;
-                home.losses++;
-            } else {
-                home.draws++; home.pts += 1;
-                away.draws++; away.pts += 1;
-            }
-        });
-
-        state.standings = Object.values(stats).sort((a, b) => {
-            if (b.pts !== a.pts) return b.pts - a.pts;
-            if (b.wins !== a.wins) return b.wins - a.wins;
-            const sgA = a.gf - a.ga, sgB = b.gf - b.ga;
-            if (sgB !== sgA) return sgB - sgA;
-            return b.gf - a.gf;
-        });
-    }
-
-    // --- Render all ---
-    function renderAll() {
-        const name = state.config['nome_campeonato'] || 'Campeonato';
-        dom.championshipName.textContent = name;
-        document.title = `Dashboard - ${name}`;
-
-        renderStandings();
-        renderMatches();
-        renderBracket();
-    }
-
-    // --- Render standings ---
-    function renderStandings() {
-        const qualify = parseInt(state.config['classificados']) || 8;
-        const totalPlayed = state.matches.filter(m => m.homeGoals !== null).length;
-        const totalMatches = state.matches.length;
-        dom.matchesPlayed.textContent = `${totalPlayed}/${totalMatches} jogos`;
-
-        let html = '';
-        state.standings.forEach((t, i) => {
-            const pos = i + 1;
-            const gd = t.gf - t.ga;
-            const isQualify = pos <= qualify;
-            const isLastQualify = pos === qualify;
-            const gdSign = gd > 0 ? '+' : '';
-            const gdClass = gd > 0 ? 'sg-positive' : gd < 0 ? 'sg-negative' : '';
-
-            html += `<tr class="${isQualify ? 'qualify' : ''} ${isLastQualify ? 'qualify-border' : ''}">
-                <td class="col-pos">${pos}</td>
-                <td class="col-team">
-                    <span style="display:inline-block;width:4px;height:16px;border-radius:2px;background:${t.color};margin-right:6px;vertical-align:middle;"></span>
-                    ${t.name}
-                </td>
-                <td class="col-stat-pts">${t.pts}</td>
-                <td>${t.played}</td>
-                <td>${t.wins}</td>
-                <td>${t.draws}</td>
-                <td>${t.losses}</td>
-                <td class="col-hide-mobile">${t.gf}</td>
-                <td class="col-hide-mobile">${t.ga}</td>
-                <td class="col-stat-sg ${gdClass}">${gdSign}${gd}</td>
-            </tr>`;
-        });
-
-        dom.standingsBody.innerHTML = html;
-    }
-
-    // --- Render matches ---
-    function renderMatches() {
-        updateRoundNav();
-        const roundMatches = state.matches.filter(m => m.round === state.currentRound);
-
-        if (roundMatches.length === 0) {
-            dom.matchesContainer.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem;">Nenhum jogo nesta rodada</p>';
-            return;
-        }
-
-        const teamMap = {};
-        state.teams.forEach(t => teamMap[t.name] = t);
-
-        let html = '';
-        roundMatches.forEach(m => {
-            const played = m.homeGoals !== null;
-            const homeTeam = teamMap[m.home] || { color: '#888' };
-            const awayTeam = teamMap[m.away] || { color: '#888' };
-
-            let homeWinner = '', awayWinner = '';
-            if (played) {
-                if (m.homeGoals > m.awayGoals) homeWinner = 'winner';
-                else if (m.awayGoals > m.homeGoals) awayWinner = 'winner';
-            }
-
-            html += `<div class="match-card ${played ? '' : 'not-played'}">
-                <div class="match-teams">
-                    <div class="match-team home">
-                        <span class="team-color" style="background:${homeTeam.color}"></span>
-                        <span class="match-team-name ${homeWinner}">${m.home}</span>
-                    </div>
-                    <div class="match-score ${played ? '' : 'pending'}">
-                        ${played
-                    ? `<span>${m.homeGoals}</span><span class="sep">×</span><span>${m.awayGoals}</span>`
-                    : `<span>vs</span>`
-                }
-                    </div>
-                    <div class="match-team away">
-                        <span class="team-color" style="background:${awayTeam.color}"></span>
-                        <span class="match-team-name ${awayWinner}">${m.away}</span>
-                    </div>
-                </div>
-            </div>`;
-        });
-
-        dom.matchesContainer.innerHTML = html;
-    }
-
-    function updateRoundNav() {
-        dom.roundLabel.textContent = `Rodada ${state.currentRound}`;
-        dom.prevRound.disabled = state.currentRound <= 1;
-        dom.nextRound.disabled = state.currentRound >= state.totalRounds;
-    }
-
-    // --- Render bracket ---
-    function renderBracket() {
-        const phases = ['quartas', 'semis', 'final'];
-        const phaseLabels = { quartas: 'Quartas de Final', semis: 'Semifinais', final: 'Final' };
-
-        // Check for champion
-        const finalMatch = state.knockout.find(m => m.phase === 'final');
-        if (finalMatch && finalMatch.goals1 !== null && finalMatch.goals2 !== null && finalMatch.team1 && finalMatch.team2) {
-            let champion = null;
-            if (finalMatch.goals1 > finalMatch.goals2) champion = finalMatch.team1;
-            else if (finalMatch.goals2 > finalMatch.goals1) champion = finalMatch.team2;
-            else if (finalMatch.pen1 !== null && finalMatch.pen2 !== null) {
-                if (finalMatch.pen1 > finalMatch.pen2) champion = finalMatch.team1;
-                else if (finalMatch.pen2 > finalMatch.pen1) champion = finalMatch.team2;
-            }
-            if (champion) {
-                dom.championBanner.classList.remove('hidden');
-                dom.championName.textContent = champion;
-            } else {
-                dom.championBanner.classList.add('hidden');
-            }
-        } else {
-            dom.championBanner.classList.add('hidden');
-        }
-
-        let html = '';
-
-        phases.forEach(phase => {
-            const matches = state.knockout.filter(m => m.phase === phase);
-            html += `<div class="bracket-round">
-                <div class="bracket-round-title">${phaseLabels[phase] || phase}</div>
-                <div class="bracket-matches">`;
-
-            if (matches.length === 0) {
-                const expectedCount = phase === 'quartas' ? 4 : phase === 'semis' ? 2 : 1;
-                for (let i = 0; i < expectedCount; i++) {
-                    html += renderBracketMatch({ team1: '', team2: '', goals1: null, goals2: null, pen1: null, pen2: null });
-                }
-            } else {
-                matches.forEach(m => {
-                    html += renderBracketMatch(m);
-                });
-            }
-
-            html += `</div></div>`;
-        });
-
-        dom.bracketContainer.innerHTML = html;
-    }
-
-    function renderBracketMatch(m) {
-        const played = m.goals1 !== null && m.goals2 !== null;
-        let winner = null;
-        if (played && m.team1 && m.team2) {
-            if (m.goals1 > m.goals2) winner = 1;
-            else if (m.goals2 > m.goals1) winner = 2;
-            else if (m.pen1 !== null && m.pen2 !== null) {
-                if (m.pen1 > m.pen2) winner = 1;
-                else if (m.pen2 > m.pen1) winner = 2;
-            }
-        }
-
-        const team1Class = !m.team1 ? 'tbd' : (winner === 1 ? 'winner' : winner === 2 ? 'loser' : '');
-        const team2Class = !m.team2 ? 'tbd' : (winner === 2 ? 'winner' : winner === 1 ? 'loser' : '');
-
-        const score1Display = played ? m.goals1 + (m.pen1 !== null ? ` (${m.pen1})` : '') : '';
-        const score2Display = played ? m.goals2 + (m.pen2 !== null ? ` (${m.pen2})` : '') : '';
-
-        return `<div class="bracket-match">
-            <div class="bracket-team ${team1Class}">
-                <span class="bracket-team-name">${m.team1 || 'A definir'}</span>
-                <span class="bracket-team-score">${score1Display}</span>
-            </div>
-            <div class="bracket-team ${team2Class}">
-                <span class="bracket-team-name">${m.team2 || 'A definir'}</span>
-                <span class="bracket-team-score">${score2Display}</span>
-            </div>
-        </div>`;
-    }
-
-    // --- UI helpers ---
-    function showLoading(show) {
-        dom.loading.classList.toggle('hidden', !show);
-        $$('.tab-content').forEach(el => {
-            if (show) el.classList.add('hidden');
-        });
-        if (!show) {
-            const active = $(`.nav-tab.active`);
-            if (active) showTab(active.dataset.tab);
-        }
-    }
-
-    function showError(msg) {
-        dom.errorBanner.classList.remove('hidden');
-        dom.errorText.textContent = msg;
-    }
-
-    function hideError() {
-        dom.errorBanner.classList.add('hidden');
-    }
-
-    function showTab(tabId) {
+// ─── Loading / Error ──────────────────────────────────────────────────────────
+function showLoading(show) {
+    $('#loading').classList.toggle('hidden', !show);
+    if (show) {
         $$('.tab-content').forEach(el => el.classList.add('hidden'));
-        $$('.nav-tab').forEach(el => el.classList.remove('active'));
-        const tab = $(`#tab-${tabId}`);
-        const btn = $(`.nav-tab[data-tab="${tabId}"]`);
-        if (tab) tab.classList.remove('hidden');
-        if (btn) btn.classList.add('active');
+    } else {
+        const active = $('.nav-tab.active');
+        if (active) showTab(active.dataset.tab);
     }
+}
 
-    function showSettingsModal() {
-        dom.sheetsInput.value = state.sheetId ? `https://docs.google.com/spreadsheets/d/${state.sheetId}/edit` : '';
-        dom.settingsModal.classList.remove('hidden');
-        dom.sheetsInput.focus();
+function showError(msg) {
+    $('#error-message').classList.remove('hidden');
+    $('#error-text').textContent = msg;
+}
+
+function hideError() {
+    $('#error-message').classList.add('hidden');
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+function showTab(tabId) {
+    $$('.tab-content').forEach(el => el.classList.add('hidden'));
+    $$('.nav-tab').forEach(el => el.classList.remove('active'));
+    const tab = $(`#tab-${tabId}`);
+    const btn = $(`.nav-tab[data-tab="${tabId}"]`);
+    if (tab) tab.classList.remove('hidden');
+    if (btn) btn.classList.add('active');
+}
+
+// ─── Data ready ───────────────────────────────────────────────────────────────
+function onDataUpdate() {
+    if (!Object.values(state.dataReady).every(Boolean)) return;
+    showLoading(false);
+    calculateStandings();
+    const hasData = state.teams.length > 0 || state.matches.length > 0 || state.config.nome_campeonato;
+    if (!hasData && !state.isAdmin) {
+        $('#setup-message').classList.remove('hidden');
+        return;
     }
+    $('#setup-message').classList.add('hidden');
+    renderAll();
+}
 
-    function hideSettingsModal() {
-        dom.settingsModal.classList.add('hidden');
-    }
+// ─── Standings ────────────────────────────────────────────────────────────────
+function calculateStandings() {
+    const stats = {};
+    state.teams.forEach(t => {
+        stats[t.nome] = {
+            id: t.id, name: t.nome, abbr: t.sigla, color: t.cor,
+            pts: 0, played: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0,
+        };
+    });
 
-    // --- Event listeners ---
-    function init() {
-        // Theme
-        applyTheme(state.theme);
-        dom.themeToggle.addEventListener('click', () => {
-            applyTheme(state.theme === 'dark' ? 'light' : 'dark');
-        });
+    state.matches.forEach(m => {
+        if (m.gols_mandante == null || m.gols_visitante == null) return;
+        const home = stats[m.mandante];
+        const away = stats[m.visitante];
+        if (!home || !away) return;
 
-        // Tabs
-        $$('.nav-tab').forEach(tab => {
-            tab.addEventListener('click', () => showTab(tab.dataset.tab));
-        });
+        home.played++; away.played++;
+        home.gf += m.gols_mandante; home.ga += m.gols_visitante;
+        away.gf += m.gols_visitante; away.ga += m.gols_mandante;
 
-        // Settings
-        dom.settingsBtn.addEventListener('click', showSettingsModal);
-        if (dom.setupBtn) dom.setupBtn.addEventListener('click', showSettingsModal);
-        dom.cancelSettings.addEventListener('click', hideSettingsModal);
-        dom.settingsModal.querySelector('.modal-overlay').addEventListener('click', hideSettingsModal);
-
-        dom.saveSettings.addEventListener('click', () => {
-            const id = extractSheetId(dom.sheetsInput.value);
-            if (!id) {
-                alert('ID ou link inválido. Cole o link completo da planilha ou apenas o ID.');
-                return;
-            }
-            state.sheetId = id;
-            localStorage.setItem('sheetId', id);
-            hideSettingsModal();
-            dom.setupMessage.classList.add('hidden');
-            loadAllData();
-        });
-
-        dom.sheetsInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') dom.saveSettings.click();
-        });
-
-        // Refresh
-        dom.refreshBtn.addEventListener('click', () => {
-            if (state.sheetId) loadAllData();
-            else showSettingsModal();
-        });
-
-        // Round navigation
-        dom.prevRound.addEventListener('click', () => {
-            if (state.currentRound > 1) {
-                state.currentRound--;
-                renderMatches();
-            }
-        });
-
-        dom.nextRound.addEventListener('click', () => {
-            if (state.currentRound < state.totalRounds) {
-                state.currentRound++;
-                renderMatches();
-            }
-        });
-
-        // Error close
-        dom.errorClose.addEventListener('click', hideError);
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') hideSettingsModal();
-        });
-
-        // Initial load
-        if (state.sheetId) {
-            loadAllData();
+        if (m.gols_mandante > m.gols_visitante) {
+            home.wins++; home.pts += 3; away.losses++;
+        } else if (m.gols_mandante < m.gols_visitante) {
+            away.wins++; away.pts += 3; home.losses++;
         } else {
-            dom.setupMessage.classList.remove('hidden');
-            showLoading(false);
+            home.draws++; home.pts += 1;
+            away.draws++; away.pts += 1;
+        }
+    });
+
+    state.standings = Object.values(stats).sort((a, b) => {
+        if (b.pts !== a.pts) return b.pts - a.pts;
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        const sgA = a.gf - a.ga, sgB = b.gf - b.ga;
+        if (sgB !== sgA) return sgB - sgA;
+        return b.gf - a.gf;
+    });
+}
+
+// ─── Render All ───────────────────────────────────────────────────────────────
+function renderAll() {
+    const name = state.config.nome_campeonato || 'Campeonato';
+    $('#championship-name').textContent = name;
+    document.title = `Dashboard - ${name}`;
+    renderStandings();
+    renderMatches();
+    renderBracket();
+    if (state.isAdmin) renderAdminPanel();
+    $('#last-updated').textContent = new Date().toLocaleString('pt-BR');
+}
+
+// ─── Render Standings ─────────────────────────────────────────────────────────
+function renderStandings() {
+    const qualify = parseInt(state.config.classificados) || 8;
+    const totalPlayed = state.matches.filter(m => m.gols_mandante != null).length;
+    $('#matches-played-badge').textContent = `${totalPlayed}/${state.matches.length} jogos`;
+
+    let html = '';
+    state.standings.forEach((t, i) => {
+        const pos = i + 1;
+        const gd = t.gf - t.ga;
+        const isQualify = pos <= qualify;
+        const isLastQualify = pos === qualify;
+        const gdSign = gd > 0 ? '+' : '';
+        const gdClass = gd > 0 ? 'sg-positive' : gd < 0 ? 'sg-negative' : '';
+        html += `<tr class="${isQualify ? 'qualify' : ''} ${isLastQualify ? 'qualify-border' : ''}">
+            <td class="col-pos">${pos}</td>
+            <td class="col-team">
+                <span style="display:inline-block;width:4px;height:16px;border-radius:2px;background:${t.color};margin-right:6px;vertical-align:middle;"></span>
+                ${t.name}
+            </td>
+            <td class="col-stat-pts">${t.pts}</td>
+            <td>${t.played}</td>
+            <td>${t.wins}</td>
+            <td>${t.draws}</td>
+            <td>${t.losses}</td>
+            <td class="col-hide-mobile">${t.gf}</td>
+            <td class="col-hide-mobile">${t.ga}</td>
+            <td class="col-stat-sg ${gdClass}">${gdSign}${gd}</td>
+        </tr>`;
+    });
+    $('#standings-body').innerHTML = html;
+}
+
+// ─── Render Matches ───────────────────────────────────────────────────────────
+function renderMatches() {
+    state.totalRounds = state.matches.length > 0
+        ? Math.max(...state.matches.map(m => m.rodada || 0))
+        : 0;
+
+    if (!state.roundInitialized && state.totalRounds > 0) {
+        state.currentRound = findCurrentRound();
+        state.roundInitialized = true;
+    }
+
+    if (state.currentRound < 1) state.currentRound = 1;
+    if (state.currentRound > state.totalRounds) state.currentRound = Math.max(1, state.totalRounds);
+
+    updateRoundNav();
+
+    if (state.totalRounds === 0) {
+        $('#matches-container').innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem;">Nenhuma partida cadastrada</p>';
+        return;
+    }
+
+    const roundMatches = state.matches
+        .filter(m => m.rodada === state.currentRound)
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+
+    if (roundMatches.length === 0) {
+        $('#matches-container').innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem;">Nenhum jogo nesta rodada</p>';
+        return;
+    }
+
+    const teamMap = {};
+    state.teams.forEach(t => { teamMap[t.nome] = t; });
+
+    let html = '';
+    roundMatches.forEach(m => {
+        const played = m.gols_mandante != null;
+        const homeTeam = teamMap[m.mandante] || { cor: '#888' };
+        const awayTeam = teamMap[m.visitante] || { cor: '#888' };
+        let homeWinner = '', awayWinner = '';
+        if (played) {
+            if (m.gols_mandante > m.gols_visitante) homeWinner = 'winner';
+            else if (m.gols_visitante > m.gols_mandante) awayWinner = 'winner';
+        }
+        html += `<div class="match-card ${played ? '' : 'not-played'}">
+            <div class="match-teams">
+                <div class="match-team home">
+                    <span class="team-color" style="background:${homeTeam.cor}"></span>
+                    <span class="match-team-name ${homeWinner}">${m.mandante}</span>
+                </div>
+                <div class="match-score ${played ? '' : 'pending'}">
+                    ${played
+                        ? `<span>${m.gols_mandante}</span><span class="sep">×</span><span>${m.gols_visitante}</span>`
+                        : `<span>vs</span>`}
+                </div>
+                <div class="match-team away">
+                    <span class="team-color" style="background:${awayTeam.cor}"></span>
+                    <span class="match-team-name ${awayWinner}">${m.visitante}</span>
+                </div>
+            </div>
+            ${state.isAdmin ? `<button class="edit-match-btn" data-id="${m.id}" title="Editar placar">✏️ editar</button>` : ''}
+        </div>`;
+    });
+
+    $('#matches-container').innerHTML = html;
+
+    if (state.isAdmin) {
+        $$('.edit-match-btn').forEach(btn => {
+            btn.addEventListener('click', () => openEditScoreModal(btn.dataset.id));
+        });
+    }
+}
+
+function findCurrentRound() {
+    for (let r = 1; r <= state.totalRounds; r++) {
+        const roundMatches = state.matches.filter(m => m.rodada === r);
+        if (roundMatches.some(m => m.gols_mandante == null)) return r;
+    }
+    return state.totalRounds || 1;
+}
+
+function updateRoundNav() {
+    $('#round-label').textContent = `Rodada ${state.currentRound}`;
+    $('#prev-round').disabled = state.currentRound <= 1;
+    $('#next-round').disabled = state.currentRound >= state.totalRounds;
+}
+
+// ─── Render Bracket ───────────────────────────────────────────────────────────
+function renderBracket() {
+    const phases = ['quartas', 'semis', 'final'];
+    const phaseLabels = { quartas: 'Quartas de Final', semis: 'Semifinais', final: 'Final' };
+
+    const finalMatch = state.knockout.find(m => m.fase === 'final');
+    if (finalMatch && finalMatch.gols1 != null && finalMatch.gols2 != null && finalMatch.time1 && finalMatch.time2) {
+        let champion = null;
+        if (finalMatch.gols1 > finalMatch.gols2) champion = finalMatch.time1;
+        else if (finalMatch.gols2 > finalMatch.gols1) champion = finalMatch.time2;
+        else if (finalMatch.pen1 != null && finalMatch.pen2 != null) {
+            if (finalMatch.pen1 > finalMatch.pen2) champion = finalMatch.time1;
+            else if (finalMatch.pen2 > finalMatch.pen1) champion = finalMatch.time2;
+        }
+        if (champion) {
+            $('#champion-banner').classList.remove('hidden');
+            $('#champion-name').textContent = champion;
+        } else {
+            $('#champion-banner').classList.add('hidden');
+        }
+    } else {
+        $('#champion-banner').classList.add('hidden');
+    }
+
+    let html = '';
+    phases.forEach(phase => {
+        const matches = state.knockout
+            .filter(m => m.fase === phase)
+            .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+        html += `<div class="bracket-round">
+            <div class="bracket-round-title">${phaseLabels[phase] || phase}</div>
+            <div class="bracket-matches">`;
+        if (matches.length === 0) {
+            const count = phase === 'quartas' ? 4 : phase === 'semis' ? 2 : 1;
+            for (let i = 0; i < count; i++) {
+                html += renderBracketMatch({ id: null, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null });
+            }
+        } else {
+            matches.forEach(m => { html += renderBracketMatch(m); });
+        }
+        html += `</div></div>`;
+    });
+
+    $('#bracket-container').innerHTML = html;
+
+    if (state.isAdmin) {
+        $$('.edit-bracket-btn').forEach(btn => {
+            btn.addEventListener('click', () => openEditBracketModal(btn.dataset.id));
+        });
+    }
+}
+
+function renderBracketMatch(m) {
+    const played = m.gols1 != null && m.gols2 != null;
+    let winner = null;
+    if (played && m.time1 && m.time2) {
+        if (m.gols1 > m.gols2) winner = 1;
+        else if (m.gols2 > m.gols1) winner = 2;
+        else if (m.pen1 != null && m.pen2 != null) {
+            if (m.pen1 > m.pen2) winner = 1;
+            else if (m.pen2 > m.pen1) winner = 2;
         }
     }
+    const t1c = !m.time1 ? 'tbd' : (winner === 1 ? 'winner' : winner === 2 ? 'loser' : '');
+    const t2c = !m.time2 ? 'tbd' : (winner === 2 ? 'winner' : winner === 1 ? 'loser' : '');
+    const s1 = played ? String(m.gols1) + (m.pen1 != null ? ` (${m.pen1})` : '') : '';
+    const s2 = played ? String(m.gols2) + (m.pen2 != null ? ` (${m.pen2})` : '') : '';
+    const editBtn = state.isAdmin && m.id
+        ? `<button class="edit-bracket-btn" data-id="${m.id}" title="Editar partida">✏️ editar</button>`
+        : '';
+    return `<div class="bracket-match">
+        <div class="bracket-team ${t1c}">
+            <span class="bracket-team-name">${m.time1 || 'A definir'}</span>
+            <span class="bracket-team-score">${s1}</span>
+        </div>
+        <div class="bracket-team ${t2c}">
+            <span class="bracket-team-name">${m.time2 || 'A definir'}</span>
+            <span class="bracket-team-score">${s2}</span>
+        </div>
+        ${editBtn}
+    </div>`;
+}
 
-    // Start
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
+// ─── Admin Panel ──────────────────────────────────────────────────────────────
+function renderAdminPanel() {
+    $('#admin-champ-name').value = state.config.nome_campeonato || '';
+    $('#admin-classified').value = state.config.classificados || 8;
+
+    const datalist = $('#teams-datalist');
+    if (datalist) datalist.innerHTML = state.teams.map(t => `<option value="${t.nome}">`).join('');
+
+    const teamOptions = state.teams.map(t => `<option value="${t.nome}">${t.nome}</option>`).join('');
+    $('#admin-match-home').innerHTML = '<option value="">Mandante</option>' + teamOptions;
+    $('#admin-match-away').innerHTML = '<option value="">Visitante</option>' + teamOptions;
+
+    let teamsHtml = '';
+    state.teams.forEach(t => {
+        teamsHtml += `<div class="admin-list-item">
+            <span class="color-dot" style="background:${t.cor}"></span>
+            <span class="admin-item-label">${t.nome} <small>(${t.sigla})</small></span>
+            <button class="btn btn-danger btn-sm admin-delete-team" data-id="${t.id}">🗑️</button>
+        </div>`;
+    });
+    $('#admin-teams-list').innerHTML = teamsHtml || '<p class="hint">Nenhum time cadastrado.</p>';
+    $$('.admin-delete-team').forEach(btn => btn.addEventListener('click', () => deleteTeam(btn.dataset.id)));
+
+    const rounds = [...new Set(state.matches.map(m => m.rodada))].sort((a, b) => a - b);
+    let matchesHtml = '';
+    rounds.forEach(r => {
+        matchesHtml += `<div class="admin-round-header">Rodada ${r}</div>`;
+        state.matches
+            .filter(m => m.rodada === r)
+            .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+            .forEach(m => {
+                const score = m.gols_mandante != null ? `${m.gols_mandante} × ${m.gols_visitante}` : 'vs';
+                matchesHtml += `<div class="admin-list-item">
+                    <span class="admin-item-label">${m.mandante} <em>${score}</em> ${m.visitante}</span>
+                    <button class="btn btn-danger btn-sm admin-delete-match" data-id="${m.id}">🗑️</button>
+                </div>`;
+            });
+    });
+    $('#admin-matches-list').innerHTML = matchesHtml || '<p class="hint">Nenhuma partida cadastrada.</p>';
+    $$('.admin-delete-match').forEach(btn => btn.addEventListener('click', () => deleteMatch(btn.dataset.id)));
+}
+
+// ─── Edit Score Modal ─────────────────────────────────────────────────────────
+function openEditScoreModal(matchId) {
+    const m = state.matches.find(x => x.id === matchId);
+    if (!m) return;
+    state.editingMatch = m;
+    $('#edit-home-name').textContent = m.mandante;
+    $('#edit-away-name').textContent = m.visitante;
+    $('#edit-home-goals').value = m.gols_mandante != null ? m.gols_mandante : '';
+    $('#edit-away-goals').value = m.gols_visitante != null ? m.gols_visitante : '';
+    $('#edit-score-modal').classList.remove('hidden');
+    $('#edit-home-goals').focus();
+}
+
+function closeEditScoreModal() {
+    $('#edit-score-modal').classList.add('hidden');
+    state.editingMatch = null;
+}
+
+async function saveEditScore() {
+    const m = state.editingMatch;
+    if (!m) return;
+    const hg = $('#edit-home-goals').value;
+    const ag = $('#edit-away-goals').value;
+    try {
+        await updateDoc(doc(db, 'jogos', m.id), {
+            gols_mandante: hg !== '' ? parseInt(hg) : null,
+            gols_visitante: ag !== '' ? parseInt(ag) : null,
+        });
+        closeEditScoreModal();
+    } catch (e) {
+        showError('Erro ao salvar placar: ' + e.message);
     }
-})();
+}
+
+// ─── Edit Bracket Modal ───────────────────────────────────────────────────────
+function openEditBracketModal(matchId) {
+    const m = state.knockout.find(x => x.id === matchId);
+    if (!m) return;
+    state.editingBracket = m;
+    $('#edit-bracket-team1').value = m.time1 || '';
+    $('#edit-bracket-team2').value = m.time2 || '';
+    $('#edit-bracket-goals1').value = m.gols1 != null ? m.gols1 : '';
+    $('#edit-bracket-goals2').value = m.gols2 != null ? m.gols2 : '';
+    $('#edit-bracket-pen1').value = m.pen1 != null ? m.pen1 : '';
+    $('#edit-bracket-pen2').value = m.pen2 != null ? m.pen2 : '';
+    $('#edit-bracket-modal').classList.remove('hidden');
+    $('#edit-bracket-team1').focus();
+}
+
+function closeEditBracketModal() {
+    $('#edit-bracket-modal').classList.add('hidden');
+    state.editingBracket = null;
+}
+
+async function saveEditBracket() {
+    const m = state.editingBracket;
+    if (!m) return;
+    const g1 = $('#edit-bracket-goals1').value;
+    const g2 = $('#edit-bracket-goals2').value;
+    const p1 = $('#edit-bracket-pen1').value;
+    const p2 = $('#edit-bracket-pen2').value;
+    try {
+        await updateDoc(doc(db, 'mata_mata', m.id), {
+            time1: $('#edit-bracket-team1').value.trim(),
+            time2: $('#edit-bracket-team2').value.trim(),
+            gols1: g1 !== '' ? parseInt(g1) : null,
+            gols2: g2 !== '' ? parseInt(g2) : null,
+            pen1: p1 !== '' ? parseInt(p1) : null,
+            pen2: p2 !== '' ? parseInt(p2) : null,
+        });
+        closeEditBracketModal();
+    } catch (e) {
+        showError('Erro ao salvar partida: ' + e.message);
+    }
+}
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+async function adminLogin() {
+    const email = $('#login-email').value.trim();
+    const password = $('#login-password').value;
+    const errorEl = $('#login-error');
+    if (!email || !password) {
+        errorEl.textContent = 'Preencha email e senha.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+    const submitBtn = $('#login-submit');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Entrando...';
+    errorEl.classList.add('hidden');
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        closeLoginModal();
+    } catch (e) {
+        const msgs = {
+            'auth/user-not-found': 'Usuário não encontrado.',
+            'auth/wrong-password': 'Senha incorreta.',
+            'auth/invalid-email': 'Email inválido.',
+            'auth/invalid-credential': 'Email ou senha incorretos.',
+            'auth/too-many-requests': 'Muitas tentativas. Tente mais tarde.',
+        };
+        errorEl.textContent = msgs[e.code] || 'Erro ao fazer login.';
+        errorEl.classList.remove('hidden');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Entrar';
+    }
+}
+
+function openLoginModal() {
+    $('#login-email').value = '';
+    $('#login-password').value = '';
+    $('#login-error').classList.add('hidden');
+    $('#login-modal').classList.remove('hidden');
+    setTimeout(() => $('#login-email').focus(), 50);
+}
+
+function closeLoginModal() {
+    $('#login-modal').classList.add('hidden');
+}
+
+function setAdminMode(isAdmin) {
+    state.isAdmin = isAdmin;
+    $('#admin-login-btn').classList.toggle('hidden', isAdmin);
+    $('#admin-logout-btn').classList.toggle('hidden', !isAdmin);
+    $('#admin-tab-btn').classList.toggle('hidden', !isAdmin);
+    if (!isAdmin && $('.nav-tab.active')?.dataset.tab === 'admin') {
+        showTab('classificacao');
+    }
+    if (Object.values(state.dataReady).every(Boolean)) {
+        const hasData = state.teams.length > 0 || state.matches.length > 0 || state.config.nome_campeonato;
+        if (isAdmin || hasData) {
+            $('#setup-message').classList.add('hidden');
+            renderAll();
+        } else {
+            $('#setup-message').classList.remove('hidden');
+        }
+    }
+}
+
+// ─── Firestore CRUD ───────────────────────────────────────────────────────────
+async function saveConfig() {
+    const name = $('#admin-champ-name').value.trim();
+    const classified = parseInt($('#admin-classified').value) || 8;
+    if (!name) { alert('Digite o nome do campeonato.'); return; }
+    try {
+        await setDoc(doc(db, 'config', 'main'), { nome_campeonato: name, classificados: classified });
+    } catch (e) {
+        showError('Erro ao salvar configurações: ' + e.message);
+    }
+}
+
+async function addTeam() {
+    const nome = $('#admin-team-name').value.trim();
+    const sigla = $('#admin-team-abbr').value.trim().toUpperCase();
+    const cor = $('#admin-team-color').value;
+    if (!nome || !sigla) { alert('Preencha nome e sigla do time.'); return; }
+    try {
+        await addDoc(collection(db, 'times'), { nome, sigla, cor });
+        $('#admin-team-name').value = '';
+        $('#admin-team-abbr').value = '';
+    } catch (e) {
+        showError('Erro ao adicionar time: ' + e.message);
+    }
+}
+
+async function deleteTeam(id) {
+    if (!confirm('Excluir este time?')) return;
+    try {
+        await deleteDoc(doc(db, 'times', id));
+    } catch (e) {
+        showError('Erro ao excluir time: ' + e.message);
+    }
+}
+
+async function addMatch() {
+    const rodada = parseInt($('#admin-match-round').value);
+    const mandante = $('#admin-match-home').value;
+    const visitante = $('#admin-match-away').value;
+    if (!rodada || !mandante || !visitante) { alert('Preencha rodada, mandante e visitante.'); return; }
+    if (mandante === visitante) { alert('Mandante e visitante devem ser times diferentes.'); return; }
+    const ordem = state.matches.filter(m => m.rodada === rodada).length;
+    try {
+        await addDoc(collection(db, 'jogos'), {
+            rodada, mandante, visitante,
+            gols_mandante: null, gols_visitante: null, ordem,
+        });
+        $('#admin-match-round').value = '';
+    } catch (e) {
+        showError('Erro ao adicionar partida: ' + e.message);
+    }
+}
+
+async function deleteMatch(id) {
+    if (!confirm('Excluir esta partida?')) return;
+    try {
+        await deleteDoc(doc(db, 'jogos', id));
+    } catch (e) {
+        showError('Erro ao excluir partida: ' + e.message);
+    }
+}
+
+async function initBracket() {
+    if (state.knockout.length > 0 && !confirm('Já existe um bracket. Deseja recriar?')) return;
+    const structure = [
+        ...Array(4).fill(null).map((_, i) => ({ fase: 'quartas', ordem: i, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null })),
+        ...Array(2).fill(null).map((_, i) => ({ fase: 'semis', ordem: i, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null })),
+        { fase: 'final', ordem: 0, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null },
+    ];
+    try {
+        const batch = writeBatch(db);
+        state.knockout.forEach(m => batch.delete(doc(db, 'mata_mata', m.id)));
+        structure.forEach(s => batch.set(doc(collection(db, 'mata_mata')), s));
+        await batch.commit();
+        alert('Bracket criado! Edite cada partida na aba Mata-Mata.');
+    } catch (e) {
+        showError('Erro ao inicializar bracket: ' + e.message);
+    }
+}
+
+// ─── Firestore Listeners ──────────────────────────────────────────────────────
+function setupListeners() {
+    const ready = () => Object.values(state.dataReady).every(Boolean);
+
+    onSnapshot(doc(db, 'config', 'main'), snap => {
+        state.config = snap.exists() ? snap.data() : {};
+        state.dataReady.config = true;
+        if (ready()) { calculateStandings(); renderAll(); } else { onDataUpdate(); }
+    }, err => { console.error(err); state.dataReady.config = true; onDataUpdate(); });
+
+    onSnapshot(collection(db, 'times'), snap => {
+        state.teams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        state.dataReady.teams = true;
+        if (ready()) { calculateStandings(); renderAll(); } else { onDataUpdate(); }
+    }, err => { console.error(err); state.dataReady.teams = true; onDataUpdate(); });
+
+    onSnapshot(collection(db, 'jogos'), snap => {
+        state.matches = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (a.rodada - b.rodada) || ((a.ordem || 0) - (b.ordem || 0)));
+        state.dataReady.matches = true;
+        if (ready()) { calculateStandings(); renderAll(); } else { onDataUpdate(); }
+    }, err => { console.error(err); state.dataReady.matches = true; onDataUpdate(); });
+
+    onSnapshot(collection(db, 'mata_mata'), snap => {
+        const order = { quartas: 0, semis: 1, final: 2 };
+        state.knockout = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (order[a.fase] - order[b.fase]) || ((a.ordem || 0) - (b.ordem || 0)));
+        state.dataReady.knockout = true;
+        if (ready()) { renderBracket(); if (state.isAdmin) renderAdminPanel(); } else { onDataUpdate(); }
+    }, err => { console.error(err); state.dataReady.knockout = true; onDataUpdate(); });
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+function init() {
+    applyTheme(state.theme);
+
+    $('#theme-toggle').addEventListener('click', () => applyTheme(state.theme === 'dark' ? 'light' : 'dark'));
+
+    $$('.nav-tab').forEach(tab => tab.addEventListener('click', () => showTab(tab.dataset.tab)));
+
+    $('#admin-login-btn').addEventListener('click', openLoginModal);
+    $('#admin-logout-btn').addEventListener('click', () => signOut(auth));
+    $('#setup-btn').addEventListener('click', openLoginModal);
+
+    $('#login-submit').addEventListener('click', adminLogin);
+    $('#login-cancel').addEventListener('click', closeLoginModal);
+    $('#login-modal').querySelector('.modal-overlay').addEventListener('click', closeLoginModal);
+    $('#login-password').addEventListener('keydown', e => { if (e.key === 'Enter') adminLogin(); });
+
+    $('#edit-score-save').addEventListener('click', saveEditScore);
+    $('#edit-score-clear').addEventListener('click', async () => {
+        const m = state.editingMatch;
+        if (!m) return;
+        try {
+            await updateDoc(doc(db, 'jogos', m.id), { gols_mandante: null, gols_visitante: null });
+            closeEditScoreModal();
+        } catch (e) { showError(e.message); }
+    });
+    $('#edit-score-cancel').addEventListener('click', closeEditScoreModal);
+    $('#edit-score-modal').querySelector('.modal-overlay').addEventListener('click', closeEditScoreModal);
+
+    $('#edit-bracket-save').addEventListener('click', saveEditBracket);
+    $('#edit-bracket-clear').addEventListener('click', async () => {
+        const m = state.editingBracket;
+        if (!m) return;
+        try {
+            await updateDoc(doc(db, 'mata_mata', m.id), { time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null });
+            closeEditBracketModal();
+        } catch (e) { showError(e.message); }
+    });
+    $('#edit-bracket-cancel').addEventListener('click', closeEditBracketModal);
+    $('#edit-bracket-modal').querySelector('.modal-overlay').addEventListener('click', closeEditBracketModal);
+
+    $('#admin-save-config').addEventListener('click', saveConfig);
+    $('#admin-add-team').addEventListener('click', addTeam);
+    $('#admin-add-match').addEventListener('click', addMatch);
+    $('#admin-init-bracket').addEventListener('click', initBracket);
+
+    $('#prev-round').addEventListener('click', () => {
+        if (state.currentRound > 1) { state.currentRound--; renderMatches(); }
+    });
+    $('#next-round').addEventListener('click', () => {
+        if (state.currentRound < state.totalRounds) { state.currentRound++; renderMatches(); }
+    });
+
+    $('#refresh-btn').addEventListener('click', () => {
+        if (Object.values(state.dataReady).every(Boolean)) { calculateStandings(); renderAll(); }
+    });
+
+    $('#error-close').addEventListener('click', hideError);
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { closeLoginModal(); closeEditScoreModal(); closeEditBracketModal(); }
+    });
+
+    onAuthStateChanged(auth, user => setAdminMode(!!user));
+
+    showLoading(true);
+    setupListeners();
+}
+
+init();

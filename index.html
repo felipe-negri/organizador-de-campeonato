@@ -8,21 +8,93 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
 <body>
-    <!-- Settings Modal -->
-    <div id="settings-modal" class="modal hidden">
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal hidden">
         <div class="modal-overlay"></div>
         <div class="modal-content">
-            <h2>⚙️ Configurações</h2>
-            <label for="sheets-url-input">Link ou ID da planilha do Google Sheets:</label>
-            <input type="text" id="sheets-url-input" placeholder="https://docs.google.com/spreadsheets/d/SEU_ID/edit...">
-            <p class="hint">A planilha precisa estar publicada na web.<br>
-                Vá em <strong>Arquivo → Compartilhar → Publicar na web</strong> e publique como <strong>Página da web</strong>.</p>
+            <h2>🔐 Login Admin</h2>
+            <label for="login-email">Email:</label>
+            <input type="email" id="login-email" placeholder="admin@email.com" autocomplete="email">
+            <label for="login-password" style="margin-top:0.75rem;">Senha:</label>
+            <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+            <div id="login-error" class="login-error hidden"></div>
             <div class="modal-actions">
-                <button id="save-settings" class="btn btn-primary">Salvar e Carregar</button>
-                <button id="cancel-settings" class="btn btn-secondary">Cancelar</button>
+                <button id="login-submit" class="btn btn-primary">Entrar</button>
+                <button id="login-cancel" class="btn btn-secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Score Modal -->
+    <div id="edit-score-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <h2>✏️ Editar Placar</h2>
+            <div class="score-edit-row">
+                <div class="score-edit-team">
+                    <span id="edit-home-name" class="score-team-label"></span>
+                    <input type="number" id="edit-home-goals" min="0" max="99" placeholder="0">
+                </div>
+                <span class="score-sep">×</span>
+                <div class="score-edit-team">
+                    <span id="edit-away-name" class="score-team-label"></span>
+                    <input type="number" id="edit-away-goals" min="0" max="99" placeholder="0">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="edit-score-save" class="btn btn-primary">Salvar</button>
+                <button id="edit-score-clear" class="btn btn-secondary">Limpar Placar</button>
+                <button id="edit-score-cancel" class="btn btn-secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Bracket Match Modal -->
+    <div id="edit-bracket-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <h2>✏️ Editar Partida</h2>
+            <datalist id="teams-datalist"></datalist>
+            <div class="bracket-edit-grid">
+                <div>
+                    <label for="edit-bracket-team1">Time 1:</label>
+                    <input type="text" id="edit-bracket-team1" placeholder="Nome do time" list="teams-datalist">
+                </div>
+                <div>
+                    <label for="edit-bracket-team2">Time 2:</label>
+                    <input type="text" id="edit-bracket-team2" placeholder="Nome do time" list="teams-datalist">
+                </div>
+            </div>
+            <div class="score-edit-row" style="margin-top:0.75rem;">
+                <div class="score-edit-team">
+                    <span class="score-team-label">Gols Time 1</span>
+                    <input type="number" id="edit-bracket-goals1" min="0" max="99" placeholder="0">
+                </div>
+                <span class="score-sep">×</span>
+                <div class="score-edit-team">
+                    <span class="score-team-label">Gols Time 2</span>
+                    <input type="number" id="edit-bracket-goals2" min="0" max="99" placeholder="0">
+                </div>
+            </div>
+            <div class="penalty-row">
+                <span class="penalty-label">Pênaltis (opcional):</span>
+                <div class="score-edit-row">
+                    <div class="score-edit-team">
+                        <input type="number" id="edit-bracket-pen1" min="0" max="99" placeholder="-">
+                    </div>
+                    <span class="score-sep">×</span>
+                    <div class="score-edit-team">
+                        <input type="number" id="edit-bracket-pen2" min="0" max="99" placeholder="-">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="edit-bracket-save" class="btn btn-primary">Salvar</button>
+                <button id="edit-bracket-clear" class="btn btn-secondary">Limpar</button>
+                <button id="edit-bracket-cancel" class="btn btn-secondary">Cancelar</button>
             </div>
         </div>
     </div>
@@ -38,7 +110,8 @@
                 <button id="theme-toggle" class="btn-icon" title="Alternar tema">
                     <span id="theme-icon">☀️</span>
                 </button>
-                <button id="settings-btn" class="btn-icon" title="Configurações">⚙️</button>
+                <button id="admin-login-btn" class="btn-icon" title="Login Admin">🔐</button>
+                <button id="admin-logout-btn" class="btn-icon hidden" title="Sair do Admin">🔓</button>
                 <button id="refresh-btn" class="btn-icon" title="Atualizar dados">🔄</button>
             </div>
         </div>
@@ -59,6 +132,10 @@
                 <span class="tab-icon">🏆</span>
                 <span class="tab-label">Mata-Mata</span>
             </button>
+            <button class="nav-tab hidden" id="admin-tab-btn" data-tab="admin">
+                <span class="tab-icon">⚙️</span>
+                <span class="tab-label">Admin</span>
+            </button>
         </div>
     </nav>
 
@@ -70,13 +147,13 @@
             <p>Carregando dados...</p>
         </div>
 
-        <!-- Error / Setup -->
+        <!-- Setup Message -->
         <div id="setup-message" class="setup-message hidden">
             <div class="setup-card">
-                <span class="setup-icon">📋</span>
-                <h2>Configure sua planilha</h2>
-                <p>Para começar, configure o link da planilha do Google Sheets com os dados do campeonato.</p>
-                <button id="setup-btn" class="btn btn-primary btn-lg">Configurar Planilha</button>
+                <span class="setup-icon">🔐</span>
+                <h2>Campeonato não configurado</h2>
+                <p>Faça login como administrador para configurar e gerenciar o campeonato.</p>
+                <button id="setup-btn" class="btn btn-primary btn-lg">Entrar como Admin</button>
             </div>
         </div>
 
@@ -146,12 +223,66 @@
                 <div id="bracket-container" class="bracket"></div>
             </div>
         </section>
+
+        <!-- Admin -->
+        <section id="tab-admin" class="tab-content hidden">
+            <div class="section-header">
+                <h2>Painel Admin</h2>
+            </div>
+
+            <div class="admin-section">
+                <h3 class="admin-section-title">⚙️ Configurações do Campeonato</h3>
+                <div class="admin-form">
+                    <div class="admin-field">
+                        <label for="admin-champ-name">Nome do Campeonato:</label>
+                        <input type="text" id="admin-champ-name" placeholder="Meu Campeonato 2026">
+                    </div>
+                    <div class="admin-field">
+                        <label for="admin-classified">Times classificados para o Mata-Mata:</label>
+                        <input type="number" id="admin-classified" min="1" max="32" value="8" style="max-width:100px;">
+                    </div>
+                    <button id="admin-save-config" class="btn btn-primary">Salvar</button>
+                </div>
+            </div>
+
+            <div class="admin-section">
+                <h3 class="admin-section-title">👥 Times</h3>
+                <div class="admin-inline-form">
+                    <input type="text" id="admin-team-name" placeholder="Nome do time">
+                    <input type="text" id="admin-team-abbr" placeholder="Sigla" style="max-width:80px;" maxlength="4">
+                    <input type="color" id="admin-team-color" value="#3fb950" title="Cor do time" style="width:40px;height:36px;padding:2px;cursor:pointer;">
+                    <button id="admin-add-team" class="btn btn-primary">Adicionar</button>
+                </div>
+                <div id="admin-teams-list" class="admin-list"></div>
+            </div>
+
+            <div class="admin-section">
+                <h3 class="admin-section-title">⚽ Partidas — Fase de Grupos</h3>
+                <div class="admin-inline-form">
+                    <input type="number" id="admin-match-round" placeholder="Rodada" min="1" style="max-width:90px;">
+                    <select id="admin-match-home" class="admin-select">
+                        <option value="">Mandante</option>
+                    </select>
+                    <select id="admin-match-away" class="admin-select">
+                        <option value="">Visitante</option>
+                    </select>
+                    <button id="admin-add-match" class="btn btn-primary">Adicionar</button>
+                </div>
+                <div id="admin-matches-list" class="admin-list"></div>
+            </div>
+
+            <div class="admin-section">
+                <h3 class="admin-section-title">🏆 Mata-Mata</h3>
+                <p class="hint" style="margin-bottom:0.75rem;">Cria a estrutura do bracket (quartas + semis + final). Após inicializar, edite cada partida na aba Mata-Mata.</p>
+                <button id="admin-init-bracket" class="btn btn-secondary">Inicializar Bracket</button>
+            </div>
+        </section>
     </main>
 
     <footer>
-        <p>Dados carregados do Google Sheets • Atualizado em <span id="last-updated">--</span></p>
+        <p>Dados em tempo real via Firebase • Atualizado em <span id="last-updated">--</span></p>
     </footer>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
