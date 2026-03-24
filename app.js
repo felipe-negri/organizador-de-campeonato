@@ -137,8 +137,10 @@ function calculateStandings() {
 // ─── Render All ───────────────────────────────────────────────────────────────
 function renderAll() {
     const name = state.config.nome_campeonato || 'Campeonato';
-    $('#championship-name').textContent = name;
-    document.title = `Dashboard - ${name}`;
+    const hideName = state.config.ocultar_nome;
+    $('#championship-name').textContent = hideName ? '' : name;
+    $('#championship-name').classList.toggle('hidden', !!hideName);
+    document.title = hideName ? 'Dashboard' : `Dashboard - ${name}`;
     renderStandings();
     renderMatches();
     renderBracket();
@@ -351,6 +353,7 @@ function renderBracketMatch(m) {
 // ─── Admin Panel ──────────────────────────────────────────────────────────────
 function renderAdminPanel() {
     $('#admin-champ-name').value = state.config.nome_campeonato || '';
+    $('#admin-hide-name').checked = !!state.config.ocultar_nome;
     $('#admin-classified').value = state.config.classificados || 8;
 
     const datalist = $('#teams-datalist');
@@ -534,8 +537,9 @@ function setAdminMode(isAdmin) {
 async function saveConfig() {
     const name = $('#admin-champ-name').value.trim();
     const classified = parseInt($('#admin-classified').value) || 8;
+    const hideName = $('#admin-hide-name').checked;
     try {
-        await setDoc(doc(db, 'config', 'main'), { nome_campeonato: name, classificados: classified });
+        await setDoc(doc(db, 'config', 'main'), { nome_campeonato: name, classificados: classified, ocultar_nome: hideName });
     } catch (e) {
         showError('Erro ao salvar configurações: ' + e.message);
     }
