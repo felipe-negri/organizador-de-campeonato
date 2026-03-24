@@ -922,7 +922,20 @@ footer {
     .tab-label { display: none; }
     .tab-icon { font-size: 1.25rem; }
 
-    .col-hide-mobile { display: none; }
+    .col-hide-mobile { display: table-cell; }
+
+    .standings-table {
+        font-size: 0.72rem;
+    }
+
+    .standings-table thead th,
+    .standings-table tbody td {
+        padding: 0.4rem 0.3rem;
+    }
+
+    .standings-table td.col-team {
+        max-width: 90px;
+    }
 
     .matches-grid {
         grid-template-columns: 1fr;
