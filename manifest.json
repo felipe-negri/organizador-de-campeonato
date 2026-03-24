@@ -4,8 +4,8 @@
   "description": "Acompanhe classificação, jogos e mata-mata do campeonato",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#0f1117",
-  "theme_color": "#6c63ff",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
   "orientation": "portrait-primary",
   "icons": [
     {
