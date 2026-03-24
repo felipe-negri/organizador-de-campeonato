@@ -1332,14 +1332,13 @@ function init() {
     $$('.nav-tab').forEach(tab => tab.addEventListener('click', () => showTab(tab.dataset.tab)));
 
     // Swipe between tabs on mobile
-    const tabsContent = $('#app');
     const visibleTabs = () => Array.from($$('.nav-tab:not(.hidden)')).map(t => t.dataset.tab);
     let swipeStartX = 0, swipeStartY = 0;
-    tabsContent.addEventListener('touchstart', e => {
+    document.addEventListener('touchstart', e => {
         swipeStartX = e.touches[0].clientX;
         swipeStartY = e.touches[0].clientY;
     }, { passive: true });
-    tabsContent.addEventListener('touchend', e => {
+    document.addEventListener('touchend', e => {
         const dx = e.changedTouches[0].clientX - swipeStartX;
         const dy = e.changedTouches[0].clientY - swipeStartY;
         if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return; // ignore short/vertical
