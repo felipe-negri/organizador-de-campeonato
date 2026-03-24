@@ -1331,6 +1331,25 @@ function init() {
 
     $$('.nav-tab').forEach(tab => tab.addEventListener('click', () => showTab(tab.dataset.tab)));
 
+    // Swipe between tabs on mobile
+    const tabsContent = $('#app');
+    const visibleTabs = () => Array.from($$('.nav-tab:not(.hidden)')).map(t => t.dataset.tab);
+    let swipeStartX = 0, swipeStartY = 0;
+    tabsContent.addEventListener('touchstart', e => {
+        swipeStartX = e.touches[0].clientX;
+        swipeStartY = e.touches[0].clientY;
+    }, { passive: true });
+    tabsContent.addEventListener('touchend', e => {
+        const dx = e.changedTouches[0].clientX - swipeStartX;
+        const dy = e.changedTouches[0].clientY - swipeStartY;
+        if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return; // ignore short/vertical
+        const tabs = visibleTabs();
+        const current = $('.nav-tab.active')?.dataset.tab;
+        const idx = tabs.indexOf(current);
+        if (dx < 0 && idx < tabs.length - 1) showTab(tabs[idx + 1]);
+        else if (dx > 0 && idx > 0) showTab(tabs[idx - 1]);
+    }, { passive: true });
+
     $('#admin-login-btn').addEventListener('click', openLoginModal);
     $('#admin-logout-btn').addEventListener('click', () => signOut(auth));
     $('#setup-btn').addEventListener('click', openLoginModal);
