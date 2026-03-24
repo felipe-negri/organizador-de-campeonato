@@ -63,9 +63,20 @@ function showLoading(show) {
     }
 }
 
+function showToast(msg, type = 'success', duration = 3000) {
+    const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.innerHTML = `<span>${icons[type] || ''}</span><span>${msg}</span>`;
+    $('#toast-container').appendChild(el);
+    setTimeout(() => {
+        el.classList.add('hiding');
+        el.addEventListener('animationend', () => el.remove());
+    }, duration);
+}
+
 function showError(msg) {
-    $('#error-message').classList.remove('hidden');
-    $('#error-text').textContent = msg;
+    showToast(msg, 'error', 5000);
 }
 
 function hideError() {
@@ -568,6 +579,7 @@ async function saveEditScore() {
             tiebreak: tb,
         });
         closeEditScoreModal();
+        showToast('Placar salvo!');
     } catch (e) {
         showError('Erro ao salvar placar: ' + e.message);
     }
@@ -610,6 +622,7 @@ async function saveEditBracket() {
             pen2: p2 !== '' ? parseInt(p2) : null,
         });
         closeEditBracketModal();
+        showToast('Partida salva!');
     } catch (e) {
         showError('Erro ao salvar partida: ' + e.message);
     }
@@ -632,6 +645,7 @@ async function adminLogin() {
     try {
         await signInWithEmailAndPassword(auth, email, password);
         closeLoginModal();
+        showToast('Login realizado com sucesso!');
     } catch (e) {
         const msgs = {
             'auth/user-not-found': 'Usuário não encontrado.',
@@ -687,6 +701,7 @@ async function saveConfig() {
     const regras = state.config.regras || '';
     try {
         await setDoc(doc(db, 'config', 'main'), { nome_campeonato: name, classificados: classified, ocultar_nome: hideName, regras });
+        showToast('Configurações salvas!');
     } catch (e) {
         showError('Erro ao salvar configurações: ' + e.message);
     }
@@ -696,6 +711,7 @@ async function saveRules() {
     const regras = $('#admin-rules').value;
     try {
         await setDoc(doc(db, 'config', 'main'), { ...state.config, regras });
+        showToast('Regras salvas!');
     } catch (e) {
         showError('Erro ao salvar regras: ' + e.message);
     }
@@ -705,11 +721,12 @@ async function addTeam() {
     const nome = $('#admin-team-name').value.trim();
     const sigla = $('#admin-team-abbr').value.trim().toUpperCase();
     const cor = $('#admin-team-color').value;
-    if (!nome || !sigla) { alert('Preencha nome e sigla do time.'); return; }
+    if (!nome || !sigla) { showToast('Preencha nome e sigla do time.', 'error'); return; }
     try {
         await addDoc(collection(db, 'times'), { nome, sigla, cor, jogadores: [] });
         $('#admin-team-name').value = '';
         $('#admin-team-abbr').value = '';
+        showToast(`Time "${nome}" adicionado!`);
     } catch (e) {
         showError('Erro ao adicionar time: ' + e.message);
     }
@@ -719,6 +736,7 @@ async function deleteTeam(id) {
     if (!confirm('Excluir este time?')) return;
     try {
         await deleteDoc(doc(db, 'times', id));
+        showToast('Time excluído.', 'info');
     } catch (e) {
         showError('Erro ao excluir time: ' + e.message);
     }
@@ -789,6 +807,7 @@ async function savePlayersModal() {
     try {
         await updateDoc(doc(db, 'times', teamId), { jogadores });
         closeEditPlayersModal();
+        showToast('Jogadores salvos!');
     } catch (e) {
         showError('Erro ao salvar jogadores: ' + e.message);
     }
@@ -798,8 +817,8 @@ async function addMatch() {
     const rodada = parseInt($('#admin-match-round').value);
     const mandante = $('#admin-match-home').value;
     const visitante = $('#admin-match-away').value;
-    if (!rodada || !mandante || !visitante) { alert('Preencha rodada, mandante e visitante.'); return; }
-    if (mandante === visitante) { alert('Mandante e visitante devem ser times diferentes.'); return; }
+    if (!rodada || !mandante || !visitante) { showToast('Preencha rodada, mandante e visitante.', 'error'); return; }
+    if (mandante === visitante) { showToast('Mandante e visitante devem ser times diferentes.', 'error'); return; }
     const ordem = state.matches.filter(m => m.rodada === rodada).length;
     try {
         await addDoc(collection(db, 'jogos'), {
@@ -807,6 +826,7 @@ async function addMatch() {
             gols_mandante: null, gols_visitante: null, ordem,
         });
         $('#admin-match-round').value = '';
+        showToast('Partida adicionada!');
     } catch (e) {
         showError('Erro ao adicionar partida: ' + e.message);
     }
@@ -816,6 +836,7 @@ async function deleteMatch(id) {
     if (!confirm('Excluir esta partida?')) return;
     try {
         await deleteDoc(doc(db, 'jogos', id));
+        showToast('Partida excluída.', 'info');
     } catch (e) {
         showError('Erro ao excluir partida: ' + e.message);
     }
@@ -833,7 +854,7 @@ async function initBracket() {
         state.knockout.forEach(m => batch.delete(doc(db, 'mata_mata', m.id)));
         structure.forEach(s => batch.set(doc(collection(db, 'mata_mata')), s));
         await batch.commit();
-        alert('Bracket criado! Edite cada partida na aba Mata-Mata.');
+        showToast('Bracket criado! Edite cada partida na aba Mata-Mata.', 'info', 5000);
     } catch (e) {
         showError('Erro ao inicializar bracket: ' + e.message);
     }
@@ -841,7 +862,7 @@ async function initBracket() {
 
 async function generateRoundRobin() {
     const teams = [...state.teams];
-    if (teams.length < 2) { alert('Cadastre pelo menos 2 times antes de gerar as rodadas.'); return; }
+    if (teams.length < 2) { showToast('Cadastre pelo menos 2 times antes de gerar as rodadas.', 'error'); return; }
     if (state.matches.length > 0 && !confirm(`Já existem ${state.matches.length} partidas cadastradas. Deseja apagar tudo e gerar novamente?`)) return;
 
     // Circle algorithm: if odd number of teams, add a "bye" placeholder
@@ -890,7 +911,7 @@ async function generateRoundRobin() {
                 await b2.commit();
             }
         }
-        alert(`✅ ${fixtures.length} partidas geradas em ${numRounds} rodadas!`);
+        showToast(`${fixtures.length} partidas geradas em ${numRounds} rodadas!`, 'success', 5000);
         state.roundInitialized = false;
         showTab('jogos');
     } catch (e) {
@@ -972,6 +993,7 @@ function init() {
         try {
             await updateDoc(doc(db, 'jogos', m.id), { gols_mandante: null, gols_visitante: null, tiebreak: false });
             closeEditScoreModal();
+            showToast('Placar limpo.', 'info');
         } catch (e) { showError(e.message); }
     });
     $('#edit-score-cancel').addEventListener('click', closeEditScoreModal);
@@ -984,6 +1006,7 @@ function init() {
         try {
             await updateDoc(doc(db, 'mata_mata', m.id), { time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null });
             closeEditBracketModal();
+            showToast('Partida limpa.', 'info');
         } catch (e) { showError(e.message); }
     });
     $('#edit-bracket-cancel').addEventListener('click', closeEditBracketModal);
