@@ -115,6 +115,36 @@
         </div>
     </div>
 
+    <!-- Edit Team Modal (Admin) -->
+    <div id="edit-team-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content" style="max-width:400px">
+            <h2>✏️ Editar Time</h2>
+            <div class="admin-form" style="gap:0.75rem">
+                <div class="admin-field">
+                    <label for="edit-team-name">Nome:</label>
+                    <input type="text" id="edit-team-name" placeholder="Nome do time">
+                </div>
+                <div class="admin-field">
+                    <label for="edit-team-abbr">Sigla:</label>
+                    <input type="text" id="edit-team-abbr" placeholder="Sigla" maxlength="4" style="max-width:100px">
+                </div>
+                <div class="admin-field">
+                    <label>Cores:</label>
+                    <div class="color-inputs">
+                        <input type="color" id="edit-team-color1" value="#3fb950" title="Cor 1" style="width:36px;height:36px;padding:2px;cursor:pointer;">
+                        <input type="color" id="edit-team-color2" value="#3fb950" title="Cor 2 (opcional)" style="width:36px;height:36px;padding:2px;cursor:pointer;opacity:0.5;">
+                        <input type="color" id="edit-team-color3" value="#3fb950" title="Cor 3 (opcional)" style="width:36px;height:36px;padding:2px;cursor:pointer;opacity:0.5;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="edit-team-save" class="btn btn-primary">Salvar</button>
+                <button id="edit-team-cancel" class="btn btn-secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Edit Players Modal (Admin) -->
     <div id="edit-players-modal" class="modal hidden">
         <div class="modal-overlay"></div>

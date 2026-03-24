@@ -687,6 +687,7 @@ function renderAdminPanel() {
         teamsHtml += `<div class="admin-list-item">
             ${teamColorPill(t, 20)}
             <span class="admin-item-label">${t.nome} <small>(${t.sigla})</small> ${playerBadge}</span>
+            <button class="btn btn-secondary btn-sm admin-edit-team" data-id="${t.id}" title="Editar time">✏️</button>
             <button class="btn btn-secondary btn-sm admin-edit-players" data-id="${t.id}" title="Editar jogadores">👥</button>
             <button class="btn btn-danger btn-sm admin-delete-team" data-id="${t.id}">🗑️</button>
         </div>`;
@@ -694,6 +695,7 @@ function renderAdminPanel() {
     $('#admin-teams-list').innerHTML = teamsHtml || '<p class="hint">Nenhum time cadastrado.</p>';
     $$('.admin-delete-team').forEach(btn => btn.addEventListener('click', () => deleteTeam(btn.dataset.id)));
     $$('.admin-edit-players').forEach(btn => btn.addEventListener('click', () => openEditPlayersModal(btn.dataset.id)));
+    $$('.admin-edit-team').forEach(btn => btn.addEventListener('click', () => openEditTeamModal(btn.dataset.id)));
 
     const rounds = [...new Set(state.matches.map(m => m.rodada))].sort((a, b) => a - b);
     let matchesHtml = '';
@@ -895,6 +897,47 @@ async function saveAbout() {
         showToast('Sobre salvo!');
     } catch (e) {
         showError('Erro ao salvar sobre: ' + e.message);
+    }
+}
+
+// ─── Edit Team Modal ──────────────────────────────────────────────────────────
+function openEditTeamModal(teamId) {
+    const t = state.teams.find(x => x.id === teamId);
+    if (!t) return;
+    state.editingTeamId = teamId;
+    $('#edit-team-name').value = t.nome || '';
+    $('#edit-team-abbr').value = t.sigla || '';
+    const cores = t.cores || (t.cor ? [t.cor, t.cor, t.cor] : ['#3fb950', '#3fb950', '#3fb950']);
+    $('#edit-team-color1').value = cores[0] || '#3fb950';
+    $('#edit-team-color2').value = cores[1] || cores[0] || '#3fb950';
+    $('#edit-team-color3').value = cores[2] || cores[0] || '#3fb950';
+    $('#edit-team-modal').classList.remove('hidden');
+    $('#edit-team-name').focus();
+}
+
+function closeEditTeamModal() {
+    $('#edit-team-modal').classList.add('hidden');
+    state.editingTeamId = null;
+}
+
+async function saveEditTeam() {
+    const teamId = state.editingTeamId;
+    if (!teamId) return;
+    const nome = $('#edit-team-name').value.trim();
+    const sigla = $('#edit-team-abbr').value.trim().toUpperCase();
+    if (!nome || !sigla) { showToast('Preencha nome e sigla.', 'error'); return; }
+    const c1 = $('#edit-team-color1').value;
+    const c2 = $('#edit-team-color2').value;
+    const c3 = $('#edit-team-color3').value;
+    const cores = [c1];
+    if (c2 !== c1) cores.push(c2);
+    if (c3 !== c1 && c3 !== c2) cores.push(c3);
+    try {
+        await updateDoc(doc(db, 'times', teamId), { nome, sigla, cor: c1, cores });
+        closeEditTeamModal();
+        showToast('Time atualizado!');
+    } catch (e) {
+        showError('Erro ao atualizar time: ' + e.message);
     }
 }
 
@@ -1262,6 +1305,10 @@ function init() {
     $('#edit-players-save').addEventListener('click', savePlayersModal);
     $('#edit-players-cancel').addEventListener('click', closeEditPlayersModal);
     $('#edit-players-modal').querySelector('.modal-overlay').addEventListener('click', closeEditPlayersModal);
+
+    $('#edit-team-save').addEventListener('click', saveEditTeam);
+    $('#edit-team-cancel').addEventListener('click', closeEditTeamModal);
+    $('#edit-team-modal').querySelector('.modal-overlay').addEventListener('click', closeEditTeamModal);
 
     // Crop modal
     $('#crop-confirm').addEventListener('click', confirmCrop);
