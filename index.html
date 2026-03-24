@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Campeonato</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <h2>⚙️ Configurações</h2>
+            <label for="sheets-url-input">Link ou ID da planilha do Google Sheets:</label>
+            <input type="text" id="sheets-url-input" placeholder="https://docs.google.com/spreadsheets/d/SEU_ID/edit...">
+            <p class="hint">A planilha precisa estar publicada na web.<br>
+                Vá em <strong>Arquivo → Compartilhar → Publicar na web</strong> e publique como <strong>Página da web</strong>.</p>
+            <div class="modal-actions">
+                <button id="save-settings" class="btn btn-primary">Salvar e Carregar</button>
+                <button id="cancel-settings" class="btn btn-secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header>
+        <div class="header-content">
+            <div class="header-left">
+                <span class="trophy">🏆</span>
+                <h1 id="championship-name">Campeonato</h1>
+            </div>
+            <div class="header-actions">
+                <button id="theme-toggle" class="btn-icon" title="Alternar tema">
+                    <span id="theme-icon">☀️</span>
+                </button>
+                <button id="settings-btn" class="btn-icon" title="Configurações">⚙️</button>
+                <button id="refresh-btn" class="btn-icon" title="Atualizar dados">🔄</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-content">
+            <button class="nav-tab active" data-tab="classificacao">
+                <span class="tab-icon">📊</span>
+                <span class="tab-label">Classificação</span>
+            </button>
+            <button class="nav-tab" data-tab="jogos">
+                <span class="tab-icon">⚽</span>
+                <span class="tab-label">Jogos</span>
+            </button>
+            <button class="nav-tab" data-tab="mata-mata">
+                <span class="tab-icon">🏆</span>
+                <span class="tab-label">Mata-Mata</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+        <!-- Loading -->
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Carregando dados...</p>
+        </div>
+
+        <!-- Error / Setup -->
+        <div id="setup-message" class="setup-message hidden">
+            <div class="setup-card">
+                <span class="setup-icon">📋</span>
+                <h2>Configure sua planilha</h2>
+                <p>Para começar, configure o link da planilha do Google Sheets com os dados do campeonato.</p>
+                <button id="setup-btn" class="btn btn-primary btn-lg">Configurar Planilha</button>
+            </div>
+        </div>
+
+        <div id="error-message" class="error-banner hidden">
+            <span>❌ <span id="error-text"></span></span>
+            <button id="error-close" class="btn-icon btn-small">✕</button>
+        </div>
+
+        <!-- Classificação -->
+        <section id="tab-classificacao" class="tab-content">
+            <div class="section-header">
+                <h2>Classificação</h2>
+                <span class="badge" id="matches-played-badge"></span>
+            </div>
+            <div class="table-responsive">
+                <table class="standings-table">
+                    <thead>
+                        <tr>
+                            <th class="col-pos">#</th>
+                            <th class="col-team">Time</th>
+                            <th class="col-stat" title="Pontos">P</th>
+                            <th class="col-stat" title="Jogos">J</th>
+                            <th class="col-stat" title="Vitórias">V</th>
+                            <th class="col-stat" title="Empates">E</th>
+                            <th class="col-stat" title="Derrotas">D</th>
+                            <th class="col-stat col-hide-mobile" title="Gols Pró">GP</th>
+                            <th class="col-stat col-hide-mobile" title="Gols Contra">GC</th>
+                            <th class="col-stat" title="Saldo de Gols">SG</th>
+                        </tr>
+                    </thead>
+                    <tbody id="standings-body"></tbody>
+                </table>
+            </div>
+            <div class="legend">
+                <span class="legend-item">
+                    <span class="legend-color qualify"></span> Classificado para o mata-mata
+                </span>
+            </div>
+        </section>
+
+        <!-- Jogos -->
+        <section id="tab-jogos" class="tab-content hidden">
+            <div class="section-header">
+                <h2>Jogos</h2>
+            </div>
+            <div class="round-nav">
+                <button id="prev-round" class="btn btn-secondary btn-sm">◀ Anterior</button>
+                <span id="round-label" class="round-label">Rodada 1</span>
+                <button id="next-round" class="btn btn-secondary btn-sm">Próxima ▶</button>
+            </div>
+            <div id="matches-container" class="matches-grid"></div>
+        </section>
+
+        <!-- Mata-Mata -->
+        <section id="tab-mata-mata" class="tab-content hidden">
+            <div class="section-header">
+                <h2>Mata-Mata</h2>
+            </div>
+            <div id="champion-banner" class="champion-banner hidden">
+                <span class="champion-trophy">🏆</span>
+                <div>
+                    <span class="champion-label">Campeão</span>
+                    <span id="champion-name" class="champion-name"></span>
+                </div>
+            </div>
+            <div class="bracket-wrapper">
+                <div id="bracket-container" class="bracket"></div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Dados carregados do Google Sheets • Atualizado em <span id="last-updated">--</span></p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
