@@ -662,6 +662,8 @@ async function generateRoundRobin() {
             }
         }
         alert(`✅ ${fixtures.length} partidas geradas em ${numRounds} rodadas!`);
+        state.roundInitialized = false;
+        showTab('jogos');
     } catch (e) {
         showError('Erro ao gerar rodadas: ' + e.message);
     }
@@ -671,16 +673,25 @@ async function generateRoundRobin() {
 function setupListeners() {
     const ready = () => Object.values(state.dataReady).every(Boolean);
 
+    const afterUpdate = (fullRender = true) => {
+        if (!ready()) { onDataUpdate(); return; }
+        showLoading(false);
+        $('#setup-message').classList.add('hidden');
+        calculateStandings();
+        if (fullRender) renderAll();
+        else { renderBracket(); if (state.isAdmin) renderAdminPanel(); }
+    };
+
     onSnapshot(doc(db, 'config', 'main'), snap => {
         state.config = snap.exists() ? snap.data() : {};
         state.dataReady.config = true;
-        if (ready()) { calculateStandings(); renderAll(); } else { onDataUpdate(); }
+        afterUpdate();
     }, err => { console.error(err); state.dataReady.config = true; onDataUpdate(); });
 
     onSnapshot(collection(db, 'times'), snap => {
         state.teams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         state.dataReady.teams = true;
-        if (ready()) { calculateStandings(); renderAll(); } else { onDataUpdate(); }
+        afterUpdate();
     }, err => { console.error(err); state.dataReady.teams = true; onDataUpdate(); });
 
     onSnapshot(collection(db, 'jogos'), snap => {
@@ -688,7 +699,7 @@ function setupListeners() {
             .map(d => ({ id: d.id, ...d.data() }))
             .sort((a, b) => (a.rodada - b.rodada) || ((a.ordem || 0) - (b.ordem || 0)));
         state.dataReady.matches = true;
-        if (ready()) { calculateStandings(); renderAll(); } else { onDataUpdate(); }
+        afterUpdate();
     }, err => { console.error(err); state.dataReady.matches = true; onDataUpdate(); });
 
     onSnapshot(collection(db, 'mata_mata'), snap => {
@@ -697,7 +708,7 @@ function setupListeners() {
             .map(d => ({ id: d.id, ...d.data() }))
             .sort((a, b) => (order[a.fase] - order[b.fase]) || ((a.ordem || 0) - (b.ordem || 0)));
         state.dataReady.knockout = true;
-        if (ready()) { renderBracket(); if (state.isAdmin) renderAdminPanel(); } else { onDataUpdate(); }
+        afterUpdate(false);
     }, err => { console.error(err); state.dataReady.knockout = true; onDataUpdate(); });
 }
 
