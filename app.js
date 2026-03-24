@@ -102,6 +102,7 @@ function calculateStandings() {
         stats[t.nome] = {
             id: t.id, name: t.nome, abbr: t.sigla, color: t.cor,
             pts: 0, played: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0,
+            tbWins: 0, tbLosses: 0,
         };
     });
 
@@ -116,9 +117,19 @@ function calculateStandings() {
         away.gf += m.gols_visitante; away.ga += m.gols_mandante;
 
         if (m.gols_mandante > m.gols_visitante) {
-            home.wins++; home.pts += 3; away.losses++;
+            if (m.tiebreak) {
+                home.tbWins++; home.pts += 2;
+                away.tbLosses++; away.pts += 1;
+            } else {
+                home.wins++; home.pts += 3; away.losses++;
+            }
         } else if (m.gols_mandante < m.gols_visitante) {
-            away.wins++; away.pts += 3; home.losses++;
+            if (m.tiebreak) {
+                away.tbWins++; away.pts += 2;
+                home.tbLosses++; home.pts += 1;
+            } else {
+                away.wins++; away.pts += 3; home.losses++;
+            }
         } else {
             home.draws++; home.pts += 1;
             away.draws++; away.pts += 1;
@@ -171,7 +182,9 @@ function renderStandings() {
             <td class="col-stat-pts">${t.pts}</td>
             <td>${t.played}</td>
             <td>${t.wins}</td>
+            <td class="col-hide-mobile">${t.tbWins}</td>
             <td>${t.draws}</td>
+            <td class="col-hide-mobile">${t.tbLosses}</td>
             <td>${t.losses}</td>
             <td class="col-hide-mobile">${t.gf}</td>
             <td class="col-hide-mobile">${t.ga}</td>
@@ -224,6 +237,7 @@ function renderMatches() {
             if (m.gols_mandante > m.gols_visitante) homeWinner = 'winner';
             else if (m.gols_visitante > m.gols_mandante) awayWinner = 'winner';
         }
+        const tbBadge = played && m.tiebreak ? '<span class="tiebreak-badge">TB</span>' : '';
         html += `<div class="match-card ${played ? '' : 'not-played'}">
             <div class="match-teams">
                 <div class="match-team home">
@@ -232,7 +246,7 @@ function renderMatches() {
                 </div>
                 <div class="match-score ${played ? '' : 'pending'}">
                     ${played
-                        ? `<span>${m.gols_mandante}</span><span class="sep">×</span><span>${m.gols_visitante}</span>`
+                        ? `<span>${m.gols_mandante}</span><span class="sep">×</span><span>${m.gols_visitante}</span>${tbBadge}`
                         : `<span>vs</span>`}
                 </div>
                 <div class="match-team away">
@@ -402,6 +416,7 @@ function openEditScoreModal(matchId) {
     $('#edit-away-name').textContent = m.visitante;
     $('#edit-home-goals').value = m.gols_mandante != null ? m.gols_mandante : '';
     $('#edit-away-goals').value = m.gols_visitante != null ? m.gols_visitante : '';
+    $('#edit-tiebreak').checked = !!m.tiebreak;
     $('#edit-score-modal').classList.remove('hidden');
     $('#edit-home-goals').focus();
 }
@@ -416,10 +431,12 @@ async function saveEditScore() {
     if (!m) return;
     const hg = $('#edit-home-goals').value;
     const ag = $('#edit-away-goals').value;
+    const tb = $('#edit-tiebreak').checked;
     try {
         await updateDoc(doc(db, 'jogos', m.id), {
             gols_mandante: hg !== '' ? parseInt(hg) : null,
             gols_visitante: ag !== '' ? parseInt(ag) : null,
+            tiebreak: tb,
         });
         closeEditScoreModal();
     } catch (e) {
@@ -744,7 +761,7 @@ function init() {
         const m = state.editingMatch;
         if (!m) return;
         try {
-            await updateDoc(doc(db, 'jogos', m.id), { gols_mandante: null, gols_visitante: null });
+            await updateDoc(doc(db, 'jogos', m.id), { gols_mandante: null, gols_visitante: null, tiebreak: false });
             closeEditScoreModal();
         } catch (e) { showError(e.message); }
     });

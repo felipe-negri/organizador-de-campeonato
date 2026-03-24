@@ -45,6 +45,13 @@
                     <input type="number" id="edit-away-goals" min="0" max="99" placeholder="0">
                 </div>
             </div>
+            <div class="tiebreak-row">
+                <label class="tiebreak-label">
+                    <input type="checkbox" id="edit-tiebreak">
+                    <span>Decidido no tiebreak</span>
+                </label>
+                <span class="tiebreak-hint">Vitória no tiebreak = 2 pts / Derrota no tiebreak = 1 pt</span>
+            </div>
             <div class="modal-actions">
                 <button id="edit-score-save" class="btn btn-primary">Salvar</button>
                 <button id="edit-score-clear" class="btn btn-secondary">Limpar Placar</button>
@@ -181,7 +188,9 @@
                             <th class="col-stat" title="Pontos">P</th>
                             <th class="col-stat" title="Jogos">J</th>
                             <th class="col-stat" title="Vitórias">V</th>
+                            <th class="col-stat col-hide-mobile" title="Vitórias no Tiebreak">VT</th>
                             <th class="col-stat" title="Empates">E</th>
+                            <th class="col-stat col-hide-mobile" title="Derrotas no Tiebreak">DT</th>
                             <th class="col-stat" title="Derrotas">D</th>
                             <th class="col-stat col-hide-mobile" title="Gols Pró">GP</th>
                             <th class="col-stat col-hide-mobile" title="Gols Contra">GC</th>
