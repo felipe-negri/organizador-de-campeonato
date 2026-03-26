@@ -533,8 +533,8 @@
             <div class="admin-section" id="admin-section-users">
                 <h3 class="admin-section-title">👤 Gerenciar Usuários</h3>
                 <div class="admin-inline-form" style="margin-bottom:0.75rem;">
-                    <input type="email" id="admin-new-user-email" placeholder="Email do usuário" style="flex:2;">
-                    <input type="password" id="admin-new-user-password" placeholder="Senha (min. 6 chars)" style="flex:1;">
+                    <input type="email" id="admin-new-user-email" placeholder="Email do usuário" required style="flex:2;">
+                    <input type="password" id="admin-new-user-password" placeholder="Senha (min. 6 chars)" required minlength="6" style="flex:1;">
                     <select id="admin-new-user-role" class="admin-select" style="flex:1;"></select>
                     <button id="admin-add-user-btn" class="btn btn-primary">Adicionar</button>
                 </div>
