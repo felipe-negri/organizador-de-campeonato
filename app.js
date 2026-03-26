@@ -885,18 +885,37 @@ function renderUsersPanel() {
 
 async function addUserFromPanel() {
     const emailInput = $('#admin-new-user-email');
+    const passwordInput = $('#admin-new-user-password');
     const roleSelect = $('#admin-new-user-role');
     const email = emailInput.value.trim().toLowerCase();
+    const password = passwordInput.value;
     const role = roleSelect.value;
-    if (!email || !role) { showToast('Preencha email e role.', 'error'); return; }
+    if (!email || !password || !role) { showToast('Preencha email, senha e role.', 'error'); return; }
+    if (password.length < 6) { showToast('A senha precisa ter pelo menos 6 caracteres.', 'error'); return; }
     if (state.usuarios.find(u => u.email === email)) { showToast('Usuário já cadastrado.', 'error'); return; }
     try {
+        // Create Firebase Auth user via secondary app to avoid signing out current admin
+        const { initializeApp: initApp, deleteApp } = await import('https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js');
+        const { getAuth: getAuth2, createUserWithEmailAndPassword: createUser } = await import('https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js');
+        const tempApp = initApp(firebaseConfig, 'temp-create-user');
+        const tempAuth = getAuth2(tempApp);
+        await createUser(tempAuth, email, password);
+        await deleteApp(tempApp);
+
+        // Save to Firestore usuarios collection
         const ref = await addDoc(collection(db, 'usuarios'), { email, role });
         state.usuarios.push({ id: ref.id, email, role });
         emailInput.value = '';
-        showToast(`Usuário ${email} adicionado!`);
+        passwordInput.value = '';
+        showToast(`Usuário ${email} criado com sucesso!`);
         renderUsersPanel();
-    } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+    } catch (e) {
+        const msg = e.code === 'auth/email-already-in-use' ? 'Este email já possui conta no Firebase Auth.'
+            : e.code === 'auth/invalid-email' ? 'Email inválido.'
+            : e.code === 'auth/weak-password' ? 'Senha muito fraca (mínimo 6 caracteres).'
+            : e.message;
+        showToast('Erro: ' + msg, 'error');
+    }
 }
 
 // ─── Roles Panel ──────────────────────────────────────────────────────────────
