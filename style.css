@@ -2120,3 +2120,51 @@ footer {
     font-size: 0.8rem;
     color: var(--text-secondary);
 }
+
+/* ============================================
+   PERMISSIONS GRID (Role editing modal)
+   ============================================ */
+.perm-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem 1rem;
+    max-height: 50vh;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+}
+
+@media (max-width: 640px) {
+    .perm-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.perm-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background var(--transition);
+}
+
+.perm-checkbox:hover {
+    background: var(--hover);
+}
+
+.perm-checkbox input[type="checkbox"] {
+    accent-color: var(--primary);
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+}
+
+/* Admin user role select inline */
+.admin-user-role-select {
+    max-width: 160px;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+}

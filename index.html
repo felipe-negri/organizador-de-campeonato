@@ -220,6 +220,20 @@
     <!-- Team Popover (Desktop hover) -->
     <div id="team-popover" class="team-popover hidden"></div>
 
+    <!-- Edit Role Modal -->
+    <div id="edit-role-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <h2>🔑 Editar Permissões</h2>
+            <p id="edit-role-name" style="font-weight:600;margin-bottom:0.75rem;"></p>
+            <div id="edit-role-perms" class="perm-grid"></div>
+            <div class="modal-actions">
+                <button id="edit-role-save" class="btn btn-primary">Salvar</button>
+                <button id="edit-role-cancel" class="btn btn-secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Header -->
     <header>
         <div class="header-content">
@@ -420,7 +434,7 @@
                 <h2>Painel Admin</h2>
             </div>
 
-            <div class="admin-section">
+            <div class="admin-section" id="admin-section-config">
                 <h3 class="admin-section-title">⚙️ Configurações do Campeonato</h3>
                 <div class="admin-form">
                     <div class="admin-field">
@@ -441,7 +455,7 @@
                 </div>
             </div>
 
-            <div class="admin-section">
+            <div class="admin-section" id="admin-section-about">
                 <h3 class="admin-section-title">ℹ️ Sobre o Campeonato</h3>
                 <div class="admin-form">
                     <div class="admin-field">
@@ -452,7 +466,7 @@
                 </div>
             </div>
 
-            <div class="admin-section">
+            <div class="admin-section" id="admin-section-rules">
                 <h3 class="admin-section-title">📖 Regras do Campeonato</h3>
                 <div class="admin-form">
                     <div class="admin-field">
@@ -463,9 +477,9 @@
                 </div>
             </div>
 
-            <div class="admin-section">
+            <div class="admin-section" id="admin-section-teams">
                 <h3 class="admin-section-title">👥 Times</h3>
-                <div class="admin-inline-form">
+                <div class="admin-inline-form" id="admin-add-team-form">
                     <input type="text" id="admin-team-name" placeholder="Nome do time">
                     <input type="text" id="admin-team-abbr" placeholder="Sigla" style="max-width:80px;" maxlength="4">
                     <div class="color-inputs">
@@ -478,9 +492,9 @@
                 <div id="admin-teams-list" class="admin-list"></div>
             </div>
 
-            <div class="admin-section">
+            <div class="admin-section" id="admin-section-matches">
                 <h3 class="admin-section-title">⚽ Partidas — Fase de Grupos</h3>
-                <div class="admin-inline-form">
+                <div class="admin-inline-form" id="admin-add-match-form">
                     <input type="number" id="admin-match-round" placeholder="Rodada" min="1" style="max-width:90px;">
                     <select id="admin-match-home" class="admin-select">
                         <option value="">Mandante</option>
@@ -492,19 +506,19 @@
                     <button id="admin-add-match" class="btn btn-primary">Adicionar</button>
                 </div>
                 <div id="admin-matches-list" class="admin-list"></div>
-                <div class="admin-generate-row">
+                <div class="admin-generate-row" id="admin-generate-row">
                     <p class="hint">Ou gere automaticamente todas as rodadas no formato <strong>todos contra todos</strong> a partir dos times cadastrados.</p>
                     <button id="admin-generate-rounds" class="btn btn-secondary">⚡ Gerar Rodadas (Todos × Todos)</button>
                 </div>
             </div>
 
-            <div class="admin-section">
+            <div class="admin-section" id="admin-section-bracket">
                 <h3 class="admin-section-title">🏆 Mata-Mata</h3>
                 <p class="hint" style="margin-bottom:0.75rem;">Cria a estrutura do bracket (quartas + semis + final). Após inicializar, edite cada partida na aba Mata-Mata.</p>
                 <button id="admin-init-bracket" class="btn btn-secondary">Inicializar Bracket</button>
             </div>
 
-            <div class="admin-section">
+            <div class="admin-section" id="admin-section-backup">
                 <h3 class="admin-section-title">💾 Backup de Dados</h3>
                 <p class="hint" style="margin-bottom:0.75rem;">Exporte todos os dados do campeonato em JSON ou importe um backup anterior.</p>
                 <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
@@ -514,6 +528,26 @@
                         <input type="file" id="admin-import-file" accept=".json" style="display:none;">
                     </label>
                 </div>
+            </div>
+
+            <div class="admin-section" id="admin-section-users">
+                <h3 class="admin-section-title">👤 Gerenciar Usuários</h3>
+                <div class="admin-inline-form" style="margin-bottom:0.75rem;">
+                    <input type="email" id="admin-new-user-email" placeholder="Email do usuário" style="flex:2;">
+                    <select id="admin-new-user-role" class="admin-select" style="flex:1;"></select>
+                    <button id="admin-add-user-btn" class="btn btn-primary">Adicionar</button>
+                </div>
+                <div id="admin-users-list" class="admin-list"></div>
+            </div>
+
+            <div class="admin-section" id="admin-section-roles">
+                <h3 class="admin-section-title">🔑 Gerenciar Roles</h3>
+                <div class="admin-inline-form" style="margin-bottom:0.75rem;">
+                    <input type="text" id="admin-new-role-id" placeholder="ID (ex: editor)" style="flex:1;">
+                    <input type="text" id="admin-new-role-name" placeholder="Nome (ex: Editor)" style="flex:1;">
+                    <button id="admin-add-role-btn" class="btn btn-primary">Criar</button>
+                </div>
+                <div id="admin-roles-list" class="admin-list"></div>
             </div>
         </section>
     </main>

@@ -127,7 +127,42 @@ const state = {
     editingMatchId: null,
     editingBracket: null,
     editingTeamId: null,
+    userEmail: null,
+    userRole: null,
+    userPermissions: [],
+    roles: [],
+    usuarios: [],
 };
+
+// ─── Permissions ──────────────────────────────────────────────────────────────
+const ALL_PERMISSIONS = [
+    { key: 'config.edit', label: 'Editar configurações' },
+    { key: 'about.edit', label: 'Editar sobre o campeonato' },
+    { key: 'rules.edit', label: 'Editar regras' },
+    { key: 'teams.add', label: 'Adicionar times' },
+    { key: 'teams.edit', label: 'Editar times' },
+    { key: 'teams.delete', label: 'Excluir times' },
+    { key: 'players.edit', label: 'Editar jogadores' },
+    { key: 'matches.add', label: 'Adicionar partidas' },
+    { key: 'matches.edit', label: 'Editar partidas' },
+    { key: 'matches.score', label: 'Editar placar' },
+    { key: 'matches.delete', label: 'Excluir partidas' },
+    { key: 'matches.generate', label: 'Gerar rodadas' },
+    { key: 'bracket.init', label: 'Inicializar bracket' },
+    { key: 'bracket.edit', label: 'Editar mata-mata' },
+    { key: 'backup.export', label: 'Exportar dados' },
+    { key: 'backup.import', label: 'Importar dados' },
+    { key: 'users.manage', label: 'Gerenciar usuários' },
+    { key: 'roles.manage', label: 'Gerenciar roles' },
+];
+
+function hasPerm(perm) {
+    return state.userPermissions.includes(perm);
+}
+
+function hasAnyPerm(...perms) {
+    return perms.some(p => state.userPermissions.includes(p));
+}
 
 // ─── DOM helpers ──────────────────────────────────────────────────────────────
 const $ = (sel) => document.querySelector(sel);
@@ -373,13 +408,13 @@ function renderMatches() {
                 </div>
             </div>
             ${!played ? dateInfo : (m.data_hora ? `<div class="match-date-info">📅 ${formatDate(m.data_hora)}</div>` : '')}
-            ${state.isAdmin ? `<button class="edit-match-btn" data-id="${m.id}" title="Editar placar">✏️ editar</button>` : ''}
+            ${hasPerm('matches.score') ? `<button class="edit-match-btn" data-id="${m.id}" title="Editar placar">✏️ editar</button>` : ''}
         </div>`;
     });
 
     $('#matches-container').innerHTML = html;
 
-    if (state.isAdmin) {
+    if (hasPerm('matches.score')) {
         $$('.edit-match-btn').forEach(btn => {
             btn.addEventListener('click', () => openEditScoreModal(btn.dataset.id));
         });
@@ -445,7 +480,7 @@ function renderBracket() {
 
     $('#bracket-container').innerHTML = html;
 
-    if (state.isAdmin) {
+    if (hasPerm('bracket.edit')) {
         $$('.edit-bracket-btn').forEach(btn => {
             btn.addEventListener('click', () => openEditBracketModal(btn.dataset.id));
         });
@@ -467,7 +502,7 @@ function renderBracketMatch(m) {
     const t2c = !m.time2 ? 'tbd' : (winner === 2 ? 'winner' : winner === 1 ? 'loser' : '');
     const s1 = played ? String(m.gols1) + (m.pen1 != null ? ` (${m.pen1})` : '') : '';
     const s2 = played ? String(m.gols2) + (m.pen2 != null ? ` (${m.pen2})` : '') : '';
-    const editBtn = state.isAdmin && m.id
+    const editBtn = hasPerm('bracket.edit') && m.id
         ? `<button class="edit-bracket-btn" data-id="${m.id}" title="Editar partida">✏️ editar</button>`
         : '';
     return `<div class="bracket-match">
@@ -695,58 +730,258 @@ function positionPopover(popover, anchor) {
 
 // ─── Admin Panel ──────────────────────────────────────────────────────────────
 function renderAdminPanel() {
-    $('#admin-champ-name').value = state.config.nome_campeonato || '';
-    $('#admin-hide-name').checked = !!state.config.ocultar_nome;
-    $('#admin-classified').value = state.config.classificados || 8;
-    $('#admin-rules').value = state.config.regras || '';
-    $('#admin-about').value = state.config.sobre || '';
+    // Show/hide admin sections based on permissions
+    const sectionMap = {
+        'admin-section-config': 'config.edit',
+        'admin-section-about': 'about.edit',
+        'admin-section-rules': 'rules.edit',
+        'admin-section-teams': ['teams.add', 'teams.edit', 'teams.delete', 'players.edit'],
+        'admin-section-matches': ['matches.add', 'matches.edit', 'matches.score', 'matches.delete', 'matches.generate'],
+        'admin-section-bracket': ['bracket.init', 'bracket.edit'],
+        'admin-section-backup': ['backup.export', 'backup.import'],
+        'admin-section-users': 'users.manage',
+        'admin-section-roles': 'roles.manage',
+    };
+    Object.entries(sectionMap).forEach(([sectionId, perms]) => {
+        const el = $(`#${sectionId}`);
+        if (!el) return;
+        const visible = Array.isArray(perms) ? perms.some(p => hasPerm(p)) : hasPerm(perms);
+        el.classList.toggle('hidden', !visible);
+    });
+
+    if (hasPerm('config.edit')) {
+        $('#admin-champ-name').value = state.config.nome_campeonato || '';
+        $('#admin-hide-name').checked = !!state.config.ocultar_nome;
+        $('#admin-classified').value = state.config.classificados || 8;
+    }
+    if (hasPerm('rules.edit')) {
+        $('#admin-rules').value = state.config.regras || '';
+    }
+    if (hasPerm('about.edit')) {
+        $('#admin-about').value = state.config.sobre || '';
+    }
 
     const datalist = $('#teams-datalist');
     if (datalist) datalist.innerHTML = state.teams.map(t => `<option value="${t.nome}">`).join('');
 
-    const teamOptions = state.teams.map(t => `<option value="${t.nome}">${t.nome}</option>`).join('');
-    $('#admin-match-home').innerHTML = '<option value="">Mandante</option>' + teamOptions;
-    $('#admin-match-away').innerHTML = '<option value="">Visitante</option>' + teamOptions;
+    // Show/hide add forms based on permissions
+    const addTeamForm = $('#admin-add-team-form');
+    if (addTeamForm) addTeamForm.classList.toggle('hidden', !hasPerm('teams.add'));
+    const addMatchForm = $('#admin-add-match-form');
+    if (addMatchForm) addMatchForm.classList.toggle('hidden', !hasPerm('matches.add'));
+    const genRow = $('#admin-generate-row');
+    if (genRow) genRow.classList.toggle('hidden', !hasPerm('matches.generate'));
 
-    let teamsHtml = '';
-    state.teams.forEach(t => {
-        const playerCount = (t.jogadores || []).length;
-        const playerBadge = playerCount > 0 ? `<span class="badge badge-sm">${playerCount} jogador${playerCount > 1 ? 'es' : ''}</span>` : '';
-        teamsHtml += `<div class="admin-list-item">
-            ${teamColorPill(t, 20)}
-            <span class="admin-item-label">${t.nome} <small>(${t.sigla})</small> ${playerBadge}</span>
-            <button class="btn btn-secondary btn-sm admin-edit-team" data-id="${t.id}" title="Editar time">✏️</button>
-            <button class="btn btn-secondary btn-sm admin-edit-players" data-id="${t.id}" title="Editar jogadores">👥</button>
-            <button class="btn btn-danger btn-sm admin-delete-team" data-id="${t.id}">🗑️</button>
+    const teamOptions = state.teams.map(t => `<option value="${t.nome}">${t.nome}</option>`).join('');
+    if ($('#admin-match-home')) {
+        $('#admin-match-home').innerHTML = '<option value="">Mandante</option>' + teamOptions;
+        $('#admin-match-away').innerHTML = '<option value="">Visitante</option>' + teamOptions;
+    }
+
+    if (hasAnyPerm('teams.add', 'teams.edit', 'teams.delete', 'players.edit')) {
+        let teamsHtml = '';
+        state.teams.forEach(t => {
+            const playerCount = (t.jogadores || []).length;
+            const playerBadge = playerCount > 0 ? `<span class="badge badge-sm">${playerCount} jogador${playerCount > 1 ? 'es' : ''}</span>` : '';
+            const editBtn = hasPerm('teams.edit') ? `<button class="btn btn-secondary btn-sm admin-edit-team" data-id="${t.id}" title="Editar time">✏️</button>` : '';
+            const playersBtn = hasPerm('players.edit') ? `<button class="btn btn-secondary btn-sm admin-edit-players" data-id="${t.id}" title="Editar jogadores">👥</button>` : '';
+            const deleteBtn = hasPerm('teams.delete') ? `<button class="btn btn-danger btn-sm admin-delete-team" data-id="${t.id}">🗑️</button>` : '';
+            teamsHtml += `<div class="admin-list-item">
+                ${teamColorPill(t, 20)}
+                <span class="admin-item-label">${t.nome} <small>(${t.sigla})</small> ${playerBadge}</span>
+                ${editBtn}${playersBtn}${deleteBtn}
+            </div>`;
+        });
+        $('#admin-teams-list').innerHTML = teamsHtml || '<p class="hint">Nenhum time cadastrado.</p>';
+        $$('.admin-delete-team').forEach(btn => btn.addEventListener('click', () => deleteTeam(btn.dataset.id)));
+        $$('.admin-edit-players').forEach(btn => btn.addEventListener('click', () => openEditPlayersModal(btn.dataset.id)));
+        $$('.admin-edit-team').forEach(btn => btn.addEventListener('click', () => openEditTeamModal(btn.dataset.id)));
+    }
+
+    if (hasAnyPerm('matches.add', 'matches.edit', 'matches.score', 'matches.delete')) {
+        const rounds = [...new Set(state.matches.map(m => m.rodada))].sort((a, b) => a - b);
+        let matchesHtml = '';
+        rounds.forEach(r => {
+            matchesHtml += `<div class="admin-round-header">Rodada ${r}</div>`;
+            state.matches
+                .filter(m => m.rodada === r)
+                .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+                .forEach(m => {
+                    const score = m.gols_mandante != null ? `${m.gols_mandante} × ${m.gols_visitante}` : 'vs';
+                    const dateStr = m.data_hora ? `<span class="admin-match-date">📅 ${formatDate(m.data_hora)}</span>` : '';
+                    const editBtn = hasPerm('matches.edit') ? `<button class="btn btn-secondary btn-sm admin-edit-match" data-id="${m.id}" title="Editar partida">✏️</button>` : '';
+                    const scoreBtn = hasPerm('matches.score') ? `<button class="btn btn-secondary btn-sm admin-edit-score" data-id="${m.id}" title="Editar placar">⚽</button>` : '';
+                    const deleteBtn = hasPerm('matches.delete') ? `<button class="btn btn-danger btn-sm admin-delete-match" data-id="${m.id}">🗑️</button>` : '';
+                    matchesHtml += `<div class="admin-list-item">
+                        <span class="admin-item-label">${m.mandante} <em>${score}</em> ${m.visitante} ${dateStr}</span>
+                        ${editBtn}${scoreBtn}${deleteBtn}
+                    </div>`;
+                });
+        });
+        $('#admin-matches-list').innerHTML = matchesHtml || '<p class="hint">Nenhuma partida cadastrada.</p>';
+        $$('.admin-delete-match').forEach(btn => btn.addEventListener('click', () => deleteMatch(btn.dataset.id)));
+        $$('.admin-edit-score').forEach(btn => btn.addEventListener('click', () => openEditScoreModal(btn.dataset.id)));
+        $$('.admin-edit-match').forEach(btn => btn.addEventListener('click', () => openEditMatchModal(btn.dataset.id)));
+    }
+
+    // Render users management
+    if (hasPerm('users.manage')) renderUsersPanel();
+    // Render roles management
+    if (hasPerm('roles.manage')) renderRolesPanel();
+}
+
+// ─── Users Panel ──────────────────────────────────────────────────────────────
+function renderUsersPanel() {
+    const list = $('#admin-users-list');
+    if (!list) return;
+    const roleOptions = state.roles.map(r => `<option value="${r.id}">${r.nome}</option>`).join('');
+    // Populate the "add user" role dropdown
+    const newUserRole = $('#admin-new-user-role');
+    if (newUserRole) newUserRole.innerHTML = roleOptions;
+    let html = '';
+    state.usuarios.forEach(u => {
+        const roleDoc = state.roles.find(r => r.id === u.role);
+        const roleName = roleDoc ? roleDoc.nome : u.role || 'Sem role';
+        html += `<div class="admin-list-item">
+            <span class="admin-item-label">${u.email} <small class="badge badge-sm">${roleName}</small></span>
+            <select class="admin-user-role-select styled-select" data-uid="${u.id}" data-email="${u.email}">
+                ${state.roles.map(r => `<option value="${r.id}" ${r.id === u.role ? 'selected' : ''}>${r.nome}</option>`).join('')}
+            </select>
+            <button class="btn btn-danger btn-sm admin-delete-user" data-uid="${u.id}" data-email="${u.email}">🗑️</button>
         </div>`;
     });
-    $('#admin-teams-list').innerHTML = teamsHtml || '<p class="hint">Nenhum time cadastrado.</p>';
-    $$('.admin-delete-team').forEach(btn => btn.addEventListener('click', () => deleteTeam(btn.dataset.id)));
-    $$('.admin-edit-players').forEach(btn => btn.addEventListener('click', () => openEditPlayersModal(btn.dataset.id)));
-    $$('.admin-edit-team').forEach(btn => btn.addEventListener('click', () => openEditTeamModal(btn.dataset.id)));
+    list.innerHTML = html || '<p class="hint">Nenhum usuário cadastrado.</p>';
 
-    const rounds = [...new Set(state.matches.map(m => m.rodada))].sort((a, b) => a - b);
-    let matchesHtml = '';
-    rounds.forEach(r => {
-        matchesHtml += `<div class="admin-round-header">Rodada ${r}</div>`;
-        state.matches
-            .filter(m => m.rodada === r)
-            .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
-            .forEach(m => {
-                const score = m.gols_mandante != null ? `${m.gols_mandante} × ${m.gols_visitante}` : 'vs';
-                const dateStr = m.data_hora ? `<span class="admin-match-date">📅 ${formatDate(m.data_hora)}</span>` : '';
-                matchesHtml += `<div class="admin-list-item">
-                    <span class="admin-item-label">${m.mandante} <em>${score}</em> ${m.visitante} ${dateStr}</span>
-                    <button class="btn btn-secondary btn-sm admin-edit-match" data-id="${m.id}" title="Editar partida">✏️</button>
-                    <button class="btn btn-secondary btn-sm admin-edit-score" data-id="${m.id}" title="Editar placar">⚽</button>
-                    <button class="btn btn-danger btn-sm admin-delete-match" data-id="${m.id}">🗑️</button>
-                </div>`;
-            });
+    $$('.admin-user-role-select').forEach(sel => {
+        sel.addEventListener('change', async () => {
+            try {
+                await updateDoc(doc(db, 'usuarios', sel.dataset.uid), { role: sel.value });
+                const u = state.usuarios.find(x => x.id === sel.dataset.uid);
+                if (u) u.role = sel.value;
+                showToast(`Role de ${sel.dataset.email} atualizada!`);
+                // If the user changed their own role, reload permissions
+                if (sel.dataset.email === state.userEmail) await setAdminMode(auth.currentUser);
+                else renderUsersPanel();
+            } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+        });
     });
-    $('#admin-matches-list').innerHTML = matchesHtml || '<p class="hint">Nenhuma partida cadastrada.</p>';
-    $$('.admin-delete-match').forEach(btn => btn.addEventListener('click', () => deleteMatch(btn.dataset.id)));
-    $$('.admin-edit-score').forEach(btn => btn.addEventListener('click', () => openEditScoreModal(btn.dataset.id)));
-    $$('.admin-edit-match').forEach(btn => btn.addEventListener('click', () => openEditMatchModal(btn.dataset.id)));
+
+    $$('.admin-delete-user').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (btn.dataset.email === state.userEmail) {
+                showToast('Você não pode remover a si mesmo.', 'error');
+                return;
+            }
+            if (!confirm(`Remover acesso de ${btn.dataset.email}?`)) return;
+            try {
+                await deleteDoc(doc(db, 'usuarios', btn.dataset.uid));
+                state.usuarios = state.usuarios.filter(u => u.id !== btn.dataset.uid);
+                showToast('Usuário removido.');
+                renderUsersPanel();
+            } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+        });
+    });
+}
+
+async function addUserFromPanel() {
+    const emailInput = $('#admin-new-user-email');
+    const roleSelect = $('#admin-new-user-role');
+    const email = emailInput.value.trim().toLowerCase();
+    const role = roleSelect.value;
+    if (!email || !role) { showToast('Preencha email e role.', 'error'); return; }
+    if (state.usuarios.find(u => u.email === email)) { showToast('Usuário já cadastrado.', 'error'); return; }
+    try {
+        const ref = await addDoc(collection(db, 'usuarios'), { email, role });
+        state.usuarios.push({ id: ref.id, email, role });
+        emailInput.value = '';
+        showToast(`Usuário ${email} adicionado!`);
+        renderUsersPanel();
+    } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+// ─── Roles Panel ──────────────────────────────────────────────────────────────
+function renderRolesPanel() {
+    const list = $('#admin-roles-list');
+    if (!list) return;
+    let html = '';
+    state.roles.forEach(r => {
+        const permCount = (r.permissoes || []).length;
+        html += `<div class="admin-list-item">
+            <span class="admin-item-label">${r.nome} <small class="badge badge-sm">${r.id}</small> <small>${permCount} permissões</small></span>
+            <button class="btn btn-secondary btn-sm admin-edit-role" data-id="${r.id}" title="Editar permissões">✏️</button>
+            <button class="btn btn-danger btn-sm admin-delete-role" data-id="${r.id}">🗑️</button>
+        </div>`;
+    });
+    list.innerHTML = html || '<p class="hint">Nenhuma role cadastrada.</p>';
+
+    $$('.admin-edit-role').forEach(btn => btn.addEventListener('click', () => openEditRoleModal(btn.dataset.id)));
+    $$('.admin-delete-role').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const roleId = btn.dataset.id;
+            const usersWithRole = state.usuarios.filter(u => u.role === roleId);
+            if (usersWithRole.length > 0) {
+                showToast(`Não é possível excluir: ${usersWithRole.length} usuário(s) usam esta role.`, 'error');
+                return;
+            }
+            if (!confirm(`Excluir role "${roleId}"?`)) return;
+            try {
+                await deleteDoc(doc(db, 'roles', roleId));
+                state.roles = state.roles.filter(r => r.id !== roleId);
+                showToast('Role excluída.');
+                renderRolesPanel();
+            } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+        });
+    });
+}
+
+async function addRoleFromPanel() {
+    const idInput = $('#admin-new-role-id');
+    const nameInput = $('#admin-new-role-name');
+    const roleId = idInput.value.trim().toLowerCase().replace(/\s+/g, '_');
+    const roleName = nameInput.value.trim();
+    if (!roleId || !roleName) { showToast('Preencha ID e nome.', 'error'); return; }
+    if (state.roles.find(r => r.id === roleId)) { showToast('Role já existe.', 'error'); return; }
+    try {
+        await setDoc(doc(db, 'roles', roleId), { nome: roleName, permissoes: [] });
+        state.roles.push({ id: roleId, nome: roleName, permissoes: [] });
+        idInput.value = '';
+        nameInput.value = '';
+        showToast(`Role "${roleName}" criada! Edite as permissões.`);
+        renderRolesPanel();
+        renderUsersPanel();
+    } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+function openEditRoleModal(roleId) {
+    const role = state.roles.find(r => r.id === roleId);
+    if (!role) return;
+    $('#edit-role-name').textContent = `${role.nome} (${role.id})`;
+    const permsContainer = $('#edit-role-perms');
+    permsContainer.innerHTML = ALL_PERMISSIONS.map(p => {
+        const checked = (role.permissoes || []).includes(p.key) ? 'checked' : '';
+        return `<label class="perm-checkbox"><input type="checkbox" value="${p.key}" ${checked}> ${p.label}</label>`;
+    }).join('');
+    $('#edit-role-modal').dataset.roleId = roleId;
+    $('#edit-role-modal').classList.remove('hidden');
+}
+
+function closeEditRoleModal() {
+    $('#edit-role-modal').classList.add('hidden');
+}
+
+async function saveEditRole() {
+    const roleId = $('#edit-role-modal').dataset.roleId;
+    const perms = Array.from($$('#edit-role-perms input:checked')).map(cb => cb.value);
+    try {
+        await updateDoc(doc(db, 'roles', roleId), { permissoes: perms });
+        const r = state.roles.find(x => x.id === roleId);
+        if (r) r.permissoes = perms;
+        closeEditRoleModal();
+        showToast('Permissões atualizadas!');
+        // Reload own permissions if changed
+        if (state.userRole === roleId) await setAdminMode(auth.currentUser);
+        else renderRolesPanel();
+    } catch (e) { showToast('Erro: ' + e.message, 'error'); }
 }
 
 // ─── Edit Match Modal (Admin) ─────────────────────────────────────────────────
@@ -1003,22 +1238,92 @@ function closeLoginModal() {
     $('#login-modal').classList.add('hidden');
 }
 
-function setAdminMode(isAdmin) {
-    state.isAdmin = isAdmin;
-    $('#admin-login-btn').classList.toggle('hidden', isAdmin);
-    $('#admin-logout-btn').classList.toggle('hidden', !isAdmin);
-    $('#admin-tab-btn').classList.toggle('hidden', !isAdmin);
-    if (!isAdmin && $('.nav-tab.active')?.dataset.tab === 'admin') {
+async function setAdminMode(user) {
+    if (!user) {
+        state.isAdmin = false;
+        state.userEmail = null;
+        state.userRole = null;
+        state.userPermissions = [];
+        $('#admin-login-btn').classList.toggle('hidden', false);
+        $('#admin-logout-btn').classList.toggle('hidden', true);
+        $('#admin-tab-btn').classList.toggle('hidden', true);
+        if ($('.nav-tab.active')?.dataset.tab === 'admin') showTab('classificacao');
+        if (Object.values(state.dataReady).every(Boolean)) {
+            const hasData = state.teams.length > 0 || state.matches.length > 0 || state.config.nome_campeonato;
+            if (hasData) { $('#setup-message').classList.add('hidden'); renderAll(); }
+            else { $('#setup-message').classList.remove('hidden'); }
+        }
+        return;
+    }
+
+    state.userEmail = user.email;
+    await loadRolesAndUsers();
+
+    // Find user's role
+    const userDoc = state.usuarios.find(u => u.email === user.email);
+    const roleName = userDoc ? userDoc.role : null;
+    state.userRole = roleName;
+
+    if (roleName) {
+        const roleDoc = state.roles.find(r => r.id === roleName);
+        state.userPermissions = roleDoc ? (roleDoc.permissoes || []) : [];
+    } else {
+        state.userPermissions = [];
+    }
+
+    state.isAdmin = state.userPermissions.length > 0;
+
+    $('#admin-login-btn').classList.toggle('hidden', state.isAdmin);
+    $('#admin-logout-btn').classList.toggle('hidden', !state.isAdmin);
+    $('#admin-tab-btn').classList.toggle('hidden', !state.isAdmin);
+
+    if (!state.isAdmin && $('.nav-tab.active')?.dataset.tab === 'admin') {
         showTab('classificacao');
     }
     if (Object.values(state.dataReady).every(Boolean)) {
         const hasData = state.teams.length > 0 || state.matches.length > 0 || state.config.nome_campeonato;
-        if (isAdmin || hasData) {
+        if (state.isAdmin || hasData) {
             $('#setup-message').classList.add('hidden');
             renderAll();
         } else {
             $('#setup-message').classList.remove('hidden');
         }
+    }
+}
+
+async function loadRolesAndUsers() {
+    try {
+        const [rolesSnap, usersSnap] = await Promise.all([
+            getDocs(collection(db, 'roles')),
+            getDocs(collection(db, 'usuarios')),
+        ]);
+        state.roles = rolesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        state.usuarios = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Seed defaults if empty
+        if (state.roles.length === 0) {
+            const allPerms = ALL_PERMISSIONS.map(p => p.key);
+            await setDoc(doc(db, 'roles', 'admin'), { nome: 'Administrador', permissoes: allPerms });
+            await setDoc(doc(db, 'roles', 'arbitro'), { nome: 'Árbitro', permissoes: ['matches.score', 'bracket.edit'] });
+            state.roles = [
+                { id: 'admin', nome: 'Administrador', permissoes: allPerms },
+                { id: 'arbitro', nome: 'Árbitro', permissoes: ['matches.score', 'bracket.edit'] },
+            ];
+        }
+        if (state.usuarios.length === 0) {
+            const defaults = [
+                { email: 'felipe.negri43@gmail.com', role: 'admin' },
+                { email: 'gugabots@gmail.com', role: 'admin' },
+                { email: 'arbitrobrasileiraoftv@gmail.com', role: 'arbitro' },
+            ];
+            for (const u of defaults) {
+                const ref = doc(collection(db, 'usuarios'));
+                await setDoc(ref, u);
+            }
+            state.usuarios = defaults;
+        }
+    } catch (e) {
+        console.error('Error loading roles/users:', e);
     }
 }
 
@@ -1544,6 +1849,13 @@ function init() {
         e.target.value = ''; // reset so same file can be re-selected
     });
 
+    // Users/Roles management
+    $('#admin-add-user-btn').addEventListener('click', addUserFromPanel);
+    $('#admin-add-role-btn').addEventListener('click', addRoleFromPanel);
+    $('#edit-role-save').addEventListener('click', saveEditRole);
+    $('#edit-role-cancel').addEventListener('click', closeEditRoleModal);
+    $('#edit-role-modal').querySelector('.modal-overlay').addEventListener('click', closeEditRoleModal);
+
     // Logo lightbox
     const lightbox = $('#logo-lightbox');
     $('#header-logo-btn').addEventListener('click', () => lightbox.classList.remove('hidden'));
@@ -1582,13 +1894,13 @@ function init() {
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
             closeLoginModal(); closeEditScoreModal(); closeEditBracketModal();
-            closeEditPlayersModal();
+            closeEditPlayersModal(); closeEditRoleModal();
             $('#team-card-modal').classList.add('hidden');
             $('#team-popover').classList.add('hidden');
         }
     });
 
-    onAuthStateChanged(auth, user => setAdminMode(!!user));
+    onAuthStateChanged(auth, user => setAdminMode(user));
 
     showLoading(true);
     setupListeners();
