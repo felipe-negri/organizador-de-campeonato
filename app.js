@@ -14,7 +14,7 @@ import {
     onSnapshot, writeBatch, getDocs,
 } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js';
 import {
-    getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
+    getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail,
 } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js';
 
 const firebaseConfig = {
@@ -847,10 +847,22 @@ function renderUsersPanel() {
             <select class="admin-user-role-select styled-select" data-uid="${u.id}" data-email="${u.email}">
                 ${state.roles.map(r => `<option value="${r.id}" ${r.id === u.role ? 'selected' : ''}>${r.nome}</option>`).join('')}
             </select>
+            <button class="btn btn-secondary btn-sm admin-reset-pw-user" data-email="${u.email}" title="Enviar email de redefinição de senha">🔑</button>
             <button class="btn btn-danger btn-sm admin-delete-user" data-uid="${u.id}" data-email="${u.email}">🗑️</button>
         </div>`;
     });
     list.innerHTML = html || '<p class="hint">Nenhum usuário cadastrado.</p>';
+
+    $$('.admin-reset-pw-user').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const email = btn.dataset.email;
+            if (!confirm(`Enviar email de redefinição de senha para ${email}?`)) return;
+            try {
+                await sendPasswordResetEmail(auth, email);
+                showToast(`Email de redefinição enviado para ${email}!`);
+            } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+        });
+    });
 
     $$('.admin-user-role-select').forEach(sel => {
         sel.addEventListener('change', async () => {
@@ -1773,6 +1785,14 @@ function init() {
     $('#login-cancel').addEventListener('click', closeLoginModal);
     $('#login-modal').querySelector('.modal-overlay').addEventListener('click', closeLoginModal);
     $('#login-password').addEventListener('keydown', e => { if (e.key === 'Enter') adminLogin(); });
+    $('#login-forgot-pw').addEventListener('click', async () => {
+        const email = $('#login-email').value.trim();
+        if (!email) { showToast('Digite seu email primeiro.', 'error'); return; }
+        try {
+            await sendPasswordResetEmail(auth, email);
+            showToast(`Email de redefinição enviado para ${email}!`);
+        } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+    });
 
     $('#edit-match-save').addEventListener('click', saveEditMatch);
     $('#edit-match-cancel').addEventListener('click', closeEditMatchModal);
