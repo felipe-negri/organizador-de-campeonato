@@ -14,7 +14,7 @@ import {
     onSnapshot, writeBatch, getDocs,
 } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js';
 import {
-    getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail,
+    getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword,
 } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js';
 
 const firebaseConfig = {
@@ -847,7 +847,7 @@ function renderUsersPanel() {
             <select class="admin-user-role-select styled-select" data-uid="${u.id}" data-email="${u.email}">
                 ${state.roles.map(r => `<option value="${r.id}" ${r.id === u.role ? 'selected' : ''}>${r.nome}</option>`).join('')}
             </select>
-            <button class="btn btn-secondary btn-sm admin-reset-pw-user" data-email="${u.email}" title="Enviar email de redefinição de senha">🔑</button>
+            <button class="btn btn-secondary btn-sm admin-reset-pw-user" data-uid="${u.id}" data-email="${u.email}" title="Redefinir senha">🔑</button>
             <button class="btn btn-danger btn-sm admin-delete-user" data-uid="${u.id}" data-email="${u.email}">🗑️</button>
         </div>`;
     });
@@ -856,11 +856,30 @@ function renderUsersPanel() {
     $$('.admin-reset-pw-user').forEach(btn => {
         btn.addEventListener('click', async () => {
             const email = btn.dataset.email;
-            if (!confirm(`Enviar email de redefinição de senha para ${email}?`)) return;
+            const uid = btn.dataset.uid;
+            const usuario = state.usuarios.find(u => u.id === uid);
+            const storedPw = usuario?.senha;
+            if (!storedPw) {
+                showToast('Senha atual não armazenada. Delete e recrie o usuário.', 'error');
+                return;
+            }
+            const newPw = prompt(`Nova senha para ${email} (mín. 6 caracteres):`);
+            if (!newPw) return;
+            if (newPw.length < 6) { showToast('A senha precisa ter pelo menos 6 caracteres.', 'error'); return; }
             try {
-                await sendPasswordResetEmail(auth, email);
-                showToast(`Email de redefinição enviado para ${email}!`);
-            } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+                const { initializeApp: initApp, deleteApp } = await import('https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js');
+                const { getAuth: getAuth2, signInWithEmailAndPassword: signIn2, updatePassword: updatePw } = await import('https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js');
+                const tempApp = initApp(firebaseConfig, 'temp-reset-pw');
+                const tempAuth = getAuth2(tempApp);
+                const cred = await signIn2(tempAuth, email, storedPw);
+                await updatePw(cred.user, newPw);
+                await deleteApp(tempApp);
+                await updateDoc(doc(db, 'usuarios', uid), { senha: newPw });
+                usuario.senha = newPw;
+                showToast(`Senha de ${email} redefinida com sucesso!`);
+            } catch (e) {
+                showToast('Erro ao redefinir senha: ' + e.message, 'error');
+            }
         });
     });
 
@@ -915,8 +934,8 @@ async function addUserFromPanel() {
         await deleteApp(tempApp);
 
         // Save to Firestore usuarios collection
-        const ref = await addDoc(collection(db, 'usuarios'), { email, role });
-        state.usuarios.push({ id: ref.id, email, role });
+        const ref = await addDoc(collection(db, 'usuarios'), { email, role, senha: password });
+        state.usuarios.push({ id: ref.id, email, role, senha: password });
         emailInput.value = '';
         passwordInput.value = '';
         showToast(`Usuário ${email} criado com sucesso!`);
@@ -1785,14 +1804,6 @@ function init() {
     $('#login-cancel').addEventListener('click', closeLoginModal);
     $('#login-modal').querySelector('.modal-overlay').addEventListener('click', closeLoginModal);
     $('#login-password').addEventListener('keydown', e => { if (e.key === 'Enter') adminLogin(); });
-    $('#login-forgot-pw').addEventListener('click', async () => {
-        const email = $('#login-email').value.trim();
-        if (!email) { showToast('Digite seu email primeiro.', 'error'); return; }
-        try {
-            await sendPasswordResetEmail(auth, email);
-            showToast(`Email de redefinição enviado para ${email}!`);
-        } catch (e) { showToast('Erro: ' + e.message, 'error'); }
-    });
 
     $('#edit-match-save').addEventListener('click', saveEditMatch);
     $('#edit-match-cancel').addEventListener('click', closeEditMatchModal);
