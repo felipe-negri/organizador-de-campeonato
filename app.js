@@ -148,8 +148,8 @@ const ALL_PERMISSIONS = [
     { key: 'matches.score', label: 'Editar placar' },
     { key: 'matches.delete', label: 'Excluir partidas' },
     { key: 'matches.generate', label: 'Gerar rodadas' },
-    { key: 'bracket.init', label: 'Inicializar bracket' },
-    { key: 'bracket.edit', label: 'Editar mata-mata' },
+    { key: 'bracket.init', label: 'Inicializar mata-mata' },
+    { key: 'bracket.score', label: 'Editar placar mata-mata' },
     { key: 'backup.export', label: 'Exportar dados' },
     { key: 'backup.import', label: 'Importar dados' },
     { key: 'users.manage', label: 'Gerenciar usuários' },
@@ -480,7 +480,7 @@ function renderBracket() {
 
     $('#bracket-container').innerHTML = html;
 
-    if (hasPerm('bracket.edit')) {
+    if (hasPerm('bracket.score')) {
         $$('.edit-bracket-btn').forEach(btn => {
             btn.addEventListener('click', () => openEditBracketModal(btn.dataset.id));
         });
@@ -502,7 +502,7 @@ function renderBracketMatch(m) {
     const t2c = !m.time2 ? 'tbd' : (winner === 2 ? 'winner' : winner === 1 ? 'loser' : '');
     const s1 = played ? String(m.gols1) + (m.pen1 != null ? ` (${m.pen1})` : '') : '';
     const s2 = played ? String(m.gols2) + (m.pen2 != null ? ` (${m.pen2})` : '') : '';
-    const editBtn = hasPerm('bracket.edit') && m.id
+    const editBtn = hasPerm('bracket.score') && m.id
         ? `<button class="edit-bracket-btn" data-id="${m.id}" title="Editar partida">✏️ editar</button>`
         : '';
     return `<div class="bracket-match">
@@ -737,7 +737,7 @@ function renderAdminPanel() {
         'admin-section-rules': 'rules.edit',
         'admin-section-teams': ['teams.add', 'teams.edit', 'teams.delete', 'players.edit'],
         'admin-section-matches': ['matches.add', 'matches.edit', 'matches.score', 'matches.delete', 'matches.generate'],
-        'admin-section-bracket': ['bracket.init', 'bracket.edit'],
+        'admin-section-bracket': ['bracket.init', 'bracket.score'],
         'admin-section-backup': ['backup.export', 'backup.import'],
         'admin-section-users': 'users.manage',
         'admin-section-roles': 'roles.manage',
@@ -1354,10 +1354,10 @@ async function loadRolesAndUsers() {
         if (state.roles.length === 0) {
             const allPerms = ALL_PERMISSIONS.map(p => p.key);
             await setDoc(doc(db, 'roles', 'admin'), { nome: 'Administrador', permissoes: allPerms });
-            await setDoc(doc(db, 'roles', 'arbitro'), { nome: 'Árbitro', permissoes: ['matches.score', 'bracket.edit'] });
+            await setDoc(doc(db, 'roles', 'arbitro'), { nome: 'Árbitro', permissoes: ['matches.score', 'bracket.score'] });
             state.roles = [
                 { id: 'admin', nome: 'Administrador', permissoes: allPerms },
-                { id: 'arbitro', nome: 'Árbitro', permissoes: ['matches.score', 'bracket.edit'] },
+                { id: 'arbitro', nome: 'Árbitro', permissoes: ['matches.score', 'bracket.score'] },
             ];
         }
         if (state.usuarios.length === 0) {
