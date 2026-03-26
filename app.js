@@ -11,7 +11,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.11.0/fireba
 import {
     getFirestore, collection, doc,
     setDoc, addDoc, updateDoc, deleteDoc,
-    onSnapshot, writeBatch,
+    onSnapshot, writeBatch, getDocs,
 } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js';
 import {
     getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
@@ -875,6 +875,88 @@ async function saveEditBracket() {
     }
 }
 
+// ─── Export / Import ──────────────────────────────────────────────────────────
+function exportData() {
+    const data = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        config: state.config,
+        teams: state.teams,
+        matches: state.matches,
+        knockout: state.knockout,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `campeonato-backup-${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Backup exportado com sucesso!', 'success');
+}
+
+async function importData(file) {
+    if (!file) return;
+    try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        if (!data.version || !data.teams || !data.matches) {
+            showToast('Arquivo inválido ou formato não reconhecido.', 'error');
+            return;
+        }
+
+        const confirmed = confirm(
+            `Isso vai SUBSTITUIR todos os dados atuais pelo backup de ${data.exportedAt ? new Date(data.exportedAt).toLocaleString('pt-BR') : 'data desconhecida'}.\n\nDeseja continuar?`
+        );
+        if (!confirmed) return;
+
+        showToast('Importando dados...', 'info', 60000);
+
+        const batch = writeBatch(db);
+
+        // Config
+        if (data.config) {
+            batch.set(doc(db, 'config', 'main'), data.config);
+        }
+
+        // Delete existing teams/matches/knockout then re-add
+        // We'll do it in phases: first delete, then write new
+        const [teamsSnap, matchesSnap, koSnap] = await Promise.all([
+            getDocs(collection(db, 'times')),
+            getDocs(collection(db, 'jogos')),
+            getDocs(collection(db, 'mata_mata')),
+        ]);
+
+        teamsSnap.docs.forEach(d => batch.delete(d.ref));
+        matchesSnap.docs.forEach(d => batch.delete(d.ref));
+        koSnap.docs.forEach(d => batch.delete(d.ref));
+
+        await batch.commit();
+
+        // Write new data in a new batch
+        const batch2 = writeBatch(db);
+        (data.teams || []).forEach(t => {
+            const { id, ...rest } = t;
+            batch2.set(doc(db, 'times', id || crypto.randomUUID()), rest);
+        });
+        (data.matches || []).forEach(m => {
+            const { id, ...rest } = m;
+            batch2.set(doc(db, 'jogos', id || crypto.randomUUID()), rest);
+        });
+        (data.knockout || []).forEach(m => {
+            const { id, ...rest } = m;
+            batch2.set(doc(db, 'mata_mata', id || crypto.randomUUID()), rest);
+        });
+
+        await batch2.commit();
+        showToast('Backup importado com sucesso!', 'success');
+    } catch (e) {
+        showToast('Erro ao importar: ' + e.message, 'error');
+    }
+}
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 async function adminLogin() {
     const email = $('#login-email').value.trim();
@@ -1455,6 +1537,12 @@ function init() {
     $('#admin-add-match').addEventListener('click', addMatch);
     $('#admin-init-bracket').addEventListener('click', initBracket);
     $('#admin-generate-rounds').addEventListener('click', generateRoundRobin);
+    $('#admin-export-btn').addEventListener('click', exportData);
+    $('#admin-import-file').addEventListener('change', e => {
+        const file = e.target.files[0];
+        importData(file);
+        e.target.value = ''; // reset so same file can be re-selected
+    });
 
     // Logo lightbox
     const lightbox = $('#logo-lightbox');

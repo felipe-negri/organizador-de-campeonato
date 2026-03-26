@@ -503,6 +503,18 @@
                 <p class="hint" style="margin-bottom:0.75rem;">Cria a estrutura do bracket (quartas + semis + final). Após inicializar, edite cada partida na aba Mata-Mata.</p>
                 <button id="admin-init-bracket" class="btn btn-secondary">Inicializar Bracket</button>
             </div>
+
+            <div class="admin-section">
+                <h3 class="admin-section-title">💾 Backup de Dados</h3>
+                <p class="hint" style="margin-bottom:0.75rem;">Exporte todos os dados do campeonato em JSON ou importe um backup anterior.</p>
+                <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+                    <button id="admin-export-btn" class="btn btn-secondary">⬇️ Exportar JSON</button>
+                    <label class="btn btn-secondary" style="cursor:pointer;">
+                        ⬆️ Importar JSON
+                        <input type="file" id="admin-import-file" accept=".json" style="display:none;">
+                    </label>
+                </div>
+            </div>
         </section>
     </main>
 
