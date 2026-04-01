@@ -313,7 +313,6 @@ function renderAll() {
 
 // ─── Render Standings ─────────────────────────────────────────────────────────
 function renderStandings() {
-    const qualify = parseInt(state.config.classificados) || 8;
     const totalPlayed = state.matches.filter(m => m.gols_mandante != null).length;
     $('#matches-played-badge').textContent = `${totalPlayed}/${state.matches.length} jogos`;
 
@@ -327,15 +326,30 @@ function renderStandings() {
         roundBadge.classList.remove('hidden');
     }
 
+    const numTeams = state.standings.length;
+    // Zone boundaries: top 4 = direct quartas, 5-12 = play-in, 13+ = eliminated
+    const directQualify = Math.min(4, numTeams);
+    const playinEnd = Math.min(12, numTeams);
+
     let html = '';
     state.standings.forEach((t, i) => {
         const pos = i + 1;
         const gd = t.gf - t.ga;
-        const isQualify = pos <= qualify;
-        const isLastQualify = pos === qualify;
         const gdSign = gd > 0 ? '+' : '';
         const gdClass = gd > 0 ? 'sg-positive' : gd < 0 ? 'sg-negative' : '';
-        html += `<tr class="${isQualify ? 'qualify' : ''} ${isLastQualify ? 'qualify-border' : ''}">
+
+        let rowClass = '';
+        if (pos <= directQualify) {
+            rowClass = 'qualify';
+            if (pos === directQualify) rowClass += ' qualify-border';
+        } else if (pos <= playinEnd) {
+            rowClass = 'playin-zone';
+            if (pos === playinEnd) rowClass += ' playin-border';
+        } else {
+            rowClass = 'eliminated-zone';
+        }
+
+        html += `<tr class="${rowClass}">
             <td class="col-pos">${pos}</td>
             <td class="col-team">
                 ${teamColorPill(t, 16)}
@@ -452,7 +466,7 @@ function updateRoundNav() {
 function renderBracket() {
     const phases = ['playin', 'quartas', 'semis', 'final'];
     const phaseLabels = { playin: 'Play-In', quartas: 'Quartas de Final', semis: 'Semifinais', final: 'Final' };
-    const defaultCounts = { playin: 2, quartas: 4, semis: 2, final: 1 };
+    const defaultCounts = { playin: 4, quartas: 4, semis: 2, final: 1 };
 
     const finalMatch = state.knockout.find(m => m.fase === 'final');
     if (finalMatch && finalMatch.gols1 != null && finalMatch.gols2 != null && finalMatch.time1 && finalMatch.time2) {
@@ -477,6 +491,10 @@ function renderBracket() {
     const hasPlayin = state.knockout.some(m => m.fase === 'playin');
     const activePhases = hasPlayin ? phases : phases.filter(p => p !== 'playin');
 
+    const playinHints = [
+        '5° vs 12°', '6° vs 11°', '7° vs 10°', '8° vs 9°',
+    ];
+
     let html = '';
     activePhases.forEach(phase => {
         const matches = state.knockout
@@ -484,7 +502,8 @@ function renderBracket() {
             .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
         html += `<div class="bracket-round${phase === 'playin' ? ' bracket-round-playin' : ''}">
             <div class="bracket-round-title">${phaseLabels[phase] || phase}</div>
-            ${phase === 'playin' ? '<p class="bracket-playin-hint">7° vs 10° &nbsp;·&nbsp; 8° vs 9°</p>' : ''}
+            ${phase === 'playin' ? '<p class="bracket-playin-hint">5°×12° &nbsp;·&nbsp; 6°×11° &nbsp;·&nbsp; 7°×10° &nbsp;·&nbsp; 8°×9°</p>' : ''}
+            ${phase === 'quartas' ? '<p class="bracket-playin-hint">1°–4° (direto) vs vencedores Play-In (reordenados)</p>' : ''}
             <div class="bracket-matches">`;
         if (matches.length === 0) {
             const count = defaultCounts[phase] || 1;
@@ -774,7 +793,6 @@ function renderAdminPanel() {
     if (hasPerm('config.edit')) {
         $('#admin-champ-name').value = state.config.nome_campeonato || '';
         $('#admin-hide-name').checked = !!state.config.ocultar_nome;
-        $('#admin-classified').value = state.config.classificados || 8;
     }
     if (hasPerm('rules.edit')) {
         $('#admin-rules').value = state.config.regras || '';
@@ -1190,6 +1208,14 @@ async function saveEditBracket() {
         });
         closeEditBracketModal();
         showToast('Partida salva!');
+        // Auto-reseed quartas when a play-in match is saved with a result
+        if (m.fase === 'playin') {
+            await reseedQuartasFromPlayIn();
+        }
+        // Auto-advance winners to next phase
+        if (m.fase === 'quartas' || m.fase === 'semis') {
+            await advanceWinners(m.fase);
+        }
     } catch (e) {
         showError('Erro ao salvar partida: ' + e.message);
     }
@@ -1430,10 +1456,9 @@ async function loadRolesAndUsers() {
 // ─── Firestore CRUD ───────────────────────────────────────────────────────────
 async function saveConfig() {
     const name = $('#admin-champ-name').value.trim();
-    const classified = parseInt($('#admin-classified').value) || 8;
     const hideName = $('#admin-hide-name').checked;
     try {
-        await setDoc(doc(db, 'config', 'main'), { nome_campeonato: name, classificados: classified, ocultar_nome: hideName }, { merge: true });
+        await setDoc(doc(db, 'config', 'main'), { nome_campeonato: name, ocultar_nome: hideName }, { merge: true });
         showToast('Configurações salvas!');
     } catch (e) {
         showError('Erro ao salvar configurações: ' + e.message);
@@ -1706,9 +1731,9 @@ async function deleteMatch(id) {
 async function initBracket() {
     if (state.knockout.length > 0 && !confirm('Já existe um bracket. Deseja recriar?')) return;
     const structure = [
-        // Play-In: 7° vs 10° e 8° vs 9°
-        ...Array(2).fill(null).map((_, i) => ({ fase: 'playin', ordem: i, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null })),
-        // Quartas (top 6 + 2 vencedores do play-in)
+        // Play-In: 5°×12°, 6°×11°, 7°×10°, 8°×9°
+        ...Array(4).fill(null).map((_, i) => ({ fase: 'playin', ordem: i, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null })),
+        // Quartas: 1°–4° (direto) vs vencedores do play-in (reordenados)
         ...Array(4).fill(null).map((_, i) => ({ fase: 'quartas', ordem: i, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null })),
         ...Array(2).fill(null).map((_, i) => ({ fase: 'semis', ordem: i, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null })),
         { fase: 'final', ordem: 0, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null },
@@ -1721,6 +1746,158 @@ async function initBracket() {
         showToast('Bracket criado! Edite cada partida na aba Mata-Mata.', 'info', 5000);
     } catch (e) {
         showError('Erro ao inicializar bracket: ' + e.message);
+    }
+}
+
+async function fillBracketFromStandings() {
+    if (state.knockout.length === 0) {
+        showToast('Inicialize o bracket primeiro.', 'error');
+        return;
+    }
+    if (state.standings.length < 12) {
+        showToast('É necessário ter pelo menos 12 times na classificação.', 'error');
+        return;
+    }
+    if (!confirm('Preencher o Play-In e as Quartas com os times da classificação atual?\n\nIsso substituirá os times já inseridos nessas fases (placar não será alterado).')) return;
+
+    const s = state.standings;
+    // Play-In: 5°×12°, 6°×11°, 7°×10°, 8°×9°
+    const playinPairs = [
+        [s[4].name, s[11].name],  // 5° vs 12°
+        [s[5].name, s[10].name],  // 6° vs 11°
+        [s[6].name, s[9].name],   // 7° vs 10°
+        [s[7].name, s[8].name],   // 8° vs 9°
+    ];
+
+    // Quartas: top 4 direto (initially paired with TBD from play-in winners)
+    // 1° vs pior play-in winner, 2° vs 2ª pior, 3° vs 3ª pior, 4° vs melhor play-in winner
+    const quartasHome = [s[0].name, s[1].name, s[2].name, s[3].name];
+
+    try {
+        const batch = writeBatch(db);
+
+        // Fill play-in matches
+        const playinMatches = state.knockout
+            .filter(m => m.fase === 'playin')
+            .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+        playinMatches.forEach((m, i) => {
+            if (i < playinPairs.length) {
+                batch.update(doc(db, 'mata_mata', m.id), {
+                    time1: playinPairs[i][0],
+                    time2: playinPairs[i][1],
+                });
+            }
+        });
+
+        // Fill quartas with the top 4 teams (opponent TBD until play-in completes)
+        const quartasMatches = state.knockout
+            .filter(m => m.fase === 'quartas')
+            .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+        quartasMatches.forEach((m, i) => {
+            if (i < quartasHome.length) {
+                batch.update(doc(db, 'mata_mata', m.id), {
+                    time1: quartasHome[i],
+                    time2: '', // TBD - filled after play-in
+                });
+            }
+        });
+
+        await batch.commit();
+        showToast('Bracket preenchido! Play-In com times 5°–12°, Quartas com 1°–4°.', 'success', 5000);
+        showTab('mata-mata');
+    } catch (e) {
+        showError('Erro ao preencher bracket: ' + e.message);
+    }
+}
+
+// After all play-in results are in, reseed quartas opponents per regulation
+async function reseedQuartasFromPlayIn() {
+    const playinMatches = state.knockout
+        .filter(m => m.fase === 'playin')
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+
+    const winners = playinMatches.map(getMatchWinner);
+    if (winners.some(w => !w)) return; // not all play-in decided yet
+
+    // Get original standings positions for the winners
+    const positionOf = (name) => state.standings.findIndex(t => t.name === name);
+    // Sort winners by original position descending (worst first)
+    const sorted = [...winners]
+        .map(name => ({ name, pos: positionOf(name) }))
+        .sort((a, b) => b.pos - a.pos); // worst (highest index) first
+
+    // Quartas assignment: 1° vs worst winner, 2° vs 2nd worst, 3° vs 3rd worst, 4° vs best winner
+    const quartasMatches = state.knockout
+        .filter(m => m.fase === 'quartas')
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+
+    if (quartasMatches.length < 4 || sorted.length < 4) return;
+
+    try {
+        const batch = writeBatch(db);
+        quartasMatches.forEach((m, i) => {
+            if (i < sorted.length) {
+                batch.update(doc(db, 'mata_mata', m.id), {
+                    time2: sorted[i].name,
+                });
+            }
+        });
+        await batch.commit();
+        showToast('Quartas reordenadas automaticamente com base no Play-In!', 'success', 5000);
+    } catch (e) {
+        console.error('Erro ao reordenar quartas:', e);
+    }
+}
+
+function getMatchWinner(m) {
+    if (m.gols1 == null || m.gols2 == null) return null;
+    if (m.gols1 > m.gols2) return m.time1;
+    if (m.gols2 > m.gols1) return m.time2;
+    if (m.pen1 != null && m.pen2 != null) {
+        if (m.pen1 > m.pen2) return m.time1;
+        if (m.pen2 > m.pen1) return m.time2;
+    }
+    return null;
+}
+
+// Advance winners: quartas→semis, semis→final
+// Semis: semi0 = winner(quartas0) vs winner(quartas1), semi1 = winner(quartas2) vs winner(quartas3)
+// Final: winner(semi0) vs winner(semi1)
+async function advanceWinners(fromPhase) {
+    const nextPhase = fromPhase === 'quartas' ? 'semis' : 'final';
+    const sourceMatches = state.knockout
+        .filter(m => m.fase === fromPhase)
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+    const destMatches = state.knockout
+        .filter(m => m.fase === nextPhase)
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+
+    if (destMatches.length === 0) return;
+
+    // Mapping: which source matches feed into which dest slot
+    // quartas→semis: [0,1]→semi0, [2,3]→semi1
+    // semis→final:   [0,1]→final0
+    const mappings = fromPhase === 'quartas'
+        ? [[0, 1], [2, 3]]  // semi0 gets winners of quartas 0,1; semi1 gets winners of quartas 2,3
+        : [[0, 1]];          // final gets winners of semi 0,1
+
+    try {
+        const batch = writeBatch(db);
+        let updated = false;
+        mappings.forEach((srcIndices, destIdx) => {
+            if (destIdx >= destMatches.length) return;
+            const winners = srcIndices.map(i => i < sourceMatches.length ? getMatchWinner(sourceMatches[i]) : null);
+            const dest = destMatches[destIdx];
+            const newTime1 = winners[0] || '';
+            const newTime2 = winners[1] || '';
+            if (dest.time1 !== newTime1 || dest.time2 !== newTime2) {
+                batch.update(doc(db, 'mata_mata', dest.id), { time1: newTime1, time2: newTime2 });
+                updated = true;
+            }
+        });
+        if (updated) await batch.commit();
+    } catch (e) {
+        console.error('Erro ao avançar vencedores:', e);
     }
 }
 
@@ -1970,6 +2147,7 @@ function init() {
     $('#admin-add-team').addEventListener('click', addTeam);
     $('#admin-add-match').addEventListener('click', addMatch);
     $('#admin-init-bracket').addEventListener('click', initBracket);
+    $('#admin-fill-bracket').addEventListener('click', fillBracketFromStandings);
     $('#admin-generate-rounds').addEventListener('click', generateRoundRobin);
     $('#admin-export-btn').addEventListener('click', exportData);
     $('#admin-import-file').addEventListener('change', e => {

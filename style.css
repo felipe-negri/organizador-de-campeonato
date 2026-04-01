@@ -30,6 +30,10 @@
     --warning: #d29922;
     --qualify-bg: rgba(63, 185, 80, 0.08);
     --qualify-border: rgba(63, 185, 80, 0.4);
+    --playin-bg: rgba(210, 153, 34, 0.08);
+    --playin-border: rgba(210, 153, 34, 0.4);
+    --eliminated-bg: rgba(248, 81, 73, 0.06);
+    --eliminated-border: rgba(248, 81, 73, 0.3);
     --hover: rgba(177, 186, 196, 0.08);
     --winner-bg: rgba(63, 185, 80, 0.15);
     --loser-text: #6e7681;
@@ -54,6 +58,10 @@
     --warning: #9a6700;
     --qualify-bg: rgba(26, 127, 55, 0.06);
     --qualify-border: rgba(26, 127, 55, 0.4);
+    --playin-bg: rgba(154, 103, 0, 0.06);
+    --playin-border: rgba(154, 103, 0, 0.4);
+    --eliminated-bg: rgba(207, 34, 46, 0.05);
+    --eliminated-border: rgba(207, 34, 46, 0.3);
     --hover: rgba(31, 35, 40, 0.04);
     --winner-bg: rgba(26, 127, 55, 0.1);
     --loser-text: #8c959f;
@@ -500,6 +508,40 @@ main {
     border-bottom: 2px solid var(--qualify-border);
 }
 
+.standings-table tbody tr.playin-zone {
+    background: var(--playin-bg);
+}
+
+.standings-table tbody tr.playin-zone:hover {
+    background: var(--playin-bg);
+    filter: brightness(1.05);
+}
+
+.standings-table tr.playin-zone td.col-pos {
+    color: var(--warning);
+}
+
+.standings-table tbody tr.playin-border td {
+    border-bottom: 2px solid var(--playin-border);
+}
+
+.standings-table tbody tr.eliminated-zone {
+    background: var(--eliminated-bg);
+}
+
+.standings-table tbody tr.eliminated-zone:hover {
+    background: var(--eliminated-bg);
+    filter: brightness(1.05);
+}
+
+.standings-table tr.eliminated-zone td.col-pos {
+    color: var(--danger);
+}
+
+.standings-table tr.eliminated-zone td.col-team {
+    opacity: 0.6;
+}
+
 .legend {
     margin-top: 0.75rem;
     font-size: 0.8rem;
@@ -522,6 +564,14 @@ main {
 
 .legend-color.qualify {
     background: var(--qualify-border);
+}
+
+.legend-color.playin {
+    background: var(--playin-border);
+}
+
+.legend-color.eliminated {
+    background: var(--eliminated-border);
 }
 
 /* ============================================

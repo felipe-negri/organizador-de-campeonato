@@ -350,7 +350,13 @@
             </div>
             <div class="legend">
                 <span class="legend-item">
-                    <span class="legend-color qualify"></span> Classificado para o mata-mata
+                    <span class="legend-color qualify"></span> Quartas direto (1°–4°)
+                </span>
+                <span class="legend-item">
+                    <span class="legend-color playin"></span> Play-In (5°–12°)
+                </span>
+                <span class="legend-item">
+                    <span class="legend-color eliminated"></span> Eliminado (13°–16°)
                 </span>
                 <span class="legend-item legend-abbr-toggle" id="abbr-legend-toggle" tabindex="0" role="button" aria-expanded="false">
                     <span class="legend-abbr-label">❓ Siglas</span>
@@ -448,10 +454,6 @@
                             Ocultar nome no cabeçalho
                         </label>
                     </div>
-                    <div class="admin-field">
-                        <label for="admin-classified">Times classificados para o Mata-Mata:</label>
-                        <input type="number" id="admin-classified" min="1" max="32" value="8" style="max-width:100px;">
-                    </div>
                     <button id="admin-save-config" class="btn btn-primary">Salvar</button>
                 </div>
             </div>
@@ -515,8 +517,11 @@
 
             <div class="admin-section" id="admin-section-bracket">
                 <h3 class="admin-section-title">🏆 Mata-Mata</h3>
-                <p class="hint" style="margin-bottom:0.75rem;">Cria a estrutura do bracket (play-in + quartas + semis + final). Após inicializar, edite cada partida na aba Mata-Mata.</p>
-                <button id="admin-init-bracket" class="btn btn-secondary">Inicializar Bracket</button>
+                <p class="hint" style="margin-bottom:0.75rem;">Formato: Play-In (5°×12°, 6°×11°, 7°×10°, 8°×9°) → Quartas (1°–4° direto + vencedores Play-In) → Semis → Final.<br>Após inicializar, edite cada partida na aba Mata-Mata.</p>
+                <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+                    <button id="admin-init-bracket" class="btn btn-secondary">⚡ Inicializar Bracket</button>
+                    <button id="admin-fill-bracket" class="btn btn-secondary">📊 Preencher do Classificação</button>
+                </div>
             </div>
 
             <div class="admin-section" id="admin-section-backup">
