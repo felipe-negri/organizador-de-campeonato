@@ -117,12 +117,13 @@ const state = {
     teams: [],
     matches: [],
     knockout: [],
+    matchDates: [],
     standings: [],
     currentRound: 1,
     totalRounds: 0,
     roundInitialized: false,
     theme: localStorage.getItem('theme') || 'dark',
-    dataReady: { config: false, teams: false, matches: false, knockout: false },
+    dataReady: { config: false, teams: false, matches: false, knockout: false, matchDates: false },
     editingMatch: null,
     editingMatchId: null,
     editingBracket: null,
@@ -282,6 +283,17 @@ function calculateStandings() {
     });
 }
 
+// ─── Match Dates helper ───────────────────────────────────────────────────────
+function getMatchDate(rodada, ordem) {
+    const key = `R${rodada}_O${ordem}`;
+    const entry = state.matchDates.find(d => d.id === key);
+    return entry ? entry.data_hora : null;
+}
+
+function getMatchDateForMatch(m) {
+    return getMatchDate(m.rodada, m.ordem ?? 0) || m.data_hora || null;
+}
+
 // ─── Render All ───────────────────────────────────────────────────────────────
 function renderAll() {
     const name = state.config.nome_campeonato || 'Campeonato';
@@ -388,8 +400,9 @@ function renderMatches() {
             else if (m.gols_visitante > m.gols_mandante) awayWinner = 'winner';
         }
         const tbBadge = played && m.tiebreak ? '<span class="tiebreak-badge">TB</span>' : '';
-        const dateInfo = m.data_hora
-            ? `<div class="match-date-info">📅 ${formatDate(m.data_hora)}</div>`
+        const matchDate = getMatchDateForMatch(m);
+        const dateInfo = matchDate
+            ? `<div class="match-date-info">📅 ${formatDate(matchDate)}</div>`
             : `<div class="match-date-info match-date-tbd">📅 A definir</div>`;
         html += `<div class="match-card ${played ? '' : 'not-played'}">
             <div class="match-teams">
@@ -407,7 +420,7 @@ function renderMatches() {
                     <span class="match-team-name ${awayWinner}">${m.visitante}</span>
                 </div>
             </div>
-            ${!played ? dateInfo : (m.data_hora ? `<div class="match-date-info">📅 ${formatDate(m.data_hora)}</div>` : '')}
+            ${!played ? dateInfo : (matchDate ? `<div class="match-date-info">📅 ${formatDate(matchDate)}</div>` : '')}
             ${hasPerm('matches.score') ? `<button class="edit-match-btn" data-id="${m.id}" title="Editar placar">✏️ editar</button>` : ''}
         </div>`;
     });
@@ -437,8 +450,9 @@ function updateRoundNav() {
 
 // ─── Render Bracket ───────────────────────────────────────────────────────────
 function renderBracket() {
-    const phases = ['quartas', 'semis', 'final'];
-    const phaseLabels = { quartas: 'Quartas de Final', semis: 'Semifinais', final: 'Final' };
+    const phases = ['playin', 'quartas', 'semis', 'final'];
+    const phaseLabels = { playin: 'Play-In', quartas: 'Quartas de Final', semis: 'Semifinais', final: 'Final' };
+    const defaultCounts = { playin: 2, quartas: 4, semis: 2, final: 1 };
 
     const finalMatch = state.knockout.find(m => m.fase === 'final');
     if (finalMatch && finalMatch.gols1 != null && finalMatch.gols2 != null && finalMatch.time1 && finalMatch.time2) {
@@ -459,16 +473,21 @@ function renderBracket() {
         $('#champion-banner').classList.add('hidden');
     }
 
+    // Check if bracket has play-in matches (support legacy brackets without play-in)
+    const hasPlayin = state.knockout.some(m => m.fase === 'playin');
+    const activePhases = hasPlayin ? phases : phases.filter(p => p !== 'playin');
+
     let html = '';
-    phases.forEach(phase => {
+    activePhases.forEach(phase => {
         const matches = state.knockout
             .filter(m => m.fase === phase)
             .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
-        html += `<div class="bracket-round">
+        html += `<div class="bracket-round${phase === 'playin' ? ' bracket-round-playin' : ''}">
             <div class="bracket-round-title">${phaseLabels[phase] || phase}</div>
+            ${phase === 'playin' ? '<p class="bracket-playin-hint">7° vs 10° &nbsp;·&nbsp; 8° vs 9°</p>' : ''}
             <div class="bracket-matches">`;
         if (matches.length === 0) {
-            const count = phase === 'quartas' ? 4 : phase === 'semis' ? 2 : 1;
+            const count = defaultCounts[phase] || 1;
             for (let i = 0; i < count; i++) {
                 html += renderBracketMatch({ id: null, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null });
             }
@@ -579,9 +598,11 @@ function renderNextMatches() {
     const upcoming = state.matches
         .filter(m => m.gols_mandante == null)
         .sort((a, b) => {
-            if (a.data_hora && b.data_hora) return new Date(a.data_hora) - new Date(b.data_hora);
-            if (a.data_hora) return -1;
-            if (b.data_hora) return 1;
+            const dateA = getMatchDateForMatch(a);
+            const dateB = getMatchDateForMatch(b);
+            if (dateA && dateB) return new Date(dateA) - new Date(dateB);
+            if (dateA) return -1;
+            if (dateB) return 1;
             return (a.rodada - b.rodada) || ((a.ordem || 0) - (b.ordem || 0));
         })
         .slice(0, 3);
@@ -592,7 +613,8 @@ function renderNextMatches() {
     list.innerHTML = upcoming.map(m => {
         const ht = teamMap[m.mandante] || { cor: '#888' };
         const at = teamMap[m.visitante] || { cor: '#888' };
-        const dateStr = m.data_hora ? formatDate(m.data_hora) : '📅 A definir';
+        const matchDate = getMatchDateForMatch(m);
+        const dateStr = matchDate ? formatDate(matchDate) : '📅 A definir';
         const roundStr = `Rodada ${m.rodada}`;
         return `<div class="next-match-card">
             <div class="next-match-meta">
@@ -808,7 +830,8 @@ function renderAdminPanel() {
                 .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
                 .forEach(m => {
                     const score = m.gols_mandante != null ? `${m.gols_mandante} × ${m.gols_visitante}` : 'vs';
-                    const dateStr = m.data_hora ? `<span class="admin-match-date">📅 ${formatDate(m.data_hora)}</span>` : '';
+                    const matchDate = getMatchDateForMatch(m);
+                    const dateStr = matchDate ? `<span class="admin-match-date">📅 ${formatDate(matchDate)}</span>` : '';
                     const editBtn = hasPerm('matches.edit') ? `<button class="btn btn-secondary btn-sm admin-edit-match" data-id="${m.id}" title="Editar partida">✏️</button>` : '';
                     const scoreBtn = hasPerm('matches.score') ? `<button class="btn btn-secondary btn-sm admin-edit-score" data-id="${m.id}" title="Editar placar">⚽</button>` : '';
                     const deleteBtn = hasPerm('matches.delete') ? `<button class="btn btn-danger btn-sm admin-delete-match" data-id="${m.id}">🗑️</button>` : '';
@@ -1045,7 +1068,7 @@ function openEditMatchModal(matchId) {
     $('#edit-match-round').value = m.rodada || '';
     $('#edit-match-home-sel').value = m.mandante || '';
     $('#edit-match-away-sel').value = m.visitante || '';
-    $('#edit-match-modal-date').value = m.data_hora || '';
+    $('#edit-match-modal-date').value = getMatchDateForMatch(m) || '';
     $('#edit-match-modal').classList.remove('hidden');
     $('#edit-match-round').focus();
 }
@@ -1063,11 +1086,19 @@ async function saveEditMatch() {
     const visitante = $('#edit-match-away-sel').value;
     if (!rodada || !mandante || !visitante) { showToast('Preencha todos os campos.', 'error'); return; }
     if (mandante === visitante) { showToast('Mandante e visitante devem ser times diferentes.', 'error'); return; }
+    const m = state.matches.find(x => x.id === id);
+    const oldOrdem = m ? (m.ordem ?? 0) : 0;
+    const oldRodada = m ? m.rodada : rodada;
+    const dateVal = $('#edit-match-modal-date').value || null;
     try {
-        await updateDoc(doc(db, 'jogos', id), {
-            rodada, mandante, visitante,
-            data_hora: $('#edit-match-modal-date').value || null,
-        });
+        await updateDoc(doc(db, 'jogos', id), { rodada, mandante, visitante });
+        // If rodada changed, delete old date entry
+        const oldDateKey = `R${oldRodada}_O${oldOrdem}`;
+        const newDateKey = `R${rodada}_O${oldOrdem}`;
+        if (oldDateKey !== newDateKey) {
+            await deleteDoc(doc(db, 'datas_jogos', oldDateKey)).catch(() => {});
+        }
+        await setDoc(doc(db, 'datas_jogos', newDateKey), { rodada, ordem: oldOrdem, data_hora: dateVal }, { merge: true });
         closeEditMatchModal();
         showToast('Partida atualizada!');
     } catch (e) {
@@ -1085,7 +1116,7 @@ function openEditScoreModal(matchId) {
     $('#edit-home-goals').value = m.gols_mandante != null ? m.gols_mandante : '';
     $('#edit-away-goals').value = m.gols_visitante != null ? m.gols_visitante : '';
     $('#edit-tiebreak').checked = !!m.tiebreak;
-    $('#edit-match-date').value = m.data_hora || '';
+    $('#edit-match-date').value = getMatchDateForMatch(m) || '';
     $('#edit-score-modal').classList.remove('hidden');
     $('#edit-home-goals').focus();
 }
@@ -1101,13 +1132,17 @@ async function saveEditScore() {
     const hg = $('#edit-home-goals').value;
     const ag = $('#edit-away-goals').value;
     const tb = $('#edit-tiebreak').checked;
+    const dateVal = $('#edit-match-date').value || null;
+    const ordem = m.ordem ?? 0;
     try {
         await updateDoc(doc(db, 'jogos', m.id), {
             gols_mandante: hg !== '' ? parseInt(hg) : null,
             gols_visitante: ag !== '' ? parseInt(ag) : null,
             tiebreak: tb,
-            data_hora: $('#edit-match-date').value || null,
         });
+        // Save date to separate collection
+        const dateKey = `R${m.rodada}_O${ordem}`;
+        await setDoc(doc(db, 'datas_jogos', dateKey), { rodada: m.rodada, ordem, data_hora: dateVal }, { merge: true });
         closeEditScoreModal();
         showToast('Placar salvo!');
     } catch (e) {
@@ -1163,12 +1198,13 @@ async function saveEditBracket() {
 // ─── Export / Import ──────────────────────────────────────────────────────────
 function exportData() {
     const data = {
-        version: 1,
+        version: 2,
         exportedAt: new Date().toISOString(),
         config: state.config,
         teams: state.teams,
         matches: state.matches,
         knockout: state.knockout,
+        matchDates: state.matchDates,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1206,17 +1242,18 @@ async function importData(file) {
             batch.set(doc(db, 'config', 'main'), data.config);
         }
 
-        // Delete existing teams/matches/knockout then re-add
-        // We'll do it in phases: first delete, then write new
-        const [teamsSnap, matchesSnap, koSnap] = await Promise.all([
+        // Delete existing teams/matches/knockout/dates then re-add
+        const [teamsSnap, matchesSnap, koSnap, datesSnap] = await Promise.all([
             getDocs(collection(db, 'times')),
             getDocs(collection(db, 'jogos')),
             getDocs(collection(db, 'mata_mata')),
+            getDocs(collection(db, 'datas_jogos')),
         ]);
 
         teamsSnap.docs.forEach(d => batch.delete(d.ref));
         matchesSnap.docs.forEach(d => batch.delete(d.ref));
         koSnap.docs.forEach(d => batch.delete(d.ref));
+        datesSnap.docs.forEach(d => batch.delete(d.ref));
 
         await batch.commit();
 
@@ -1234,6 +1271,19 @@ async function importData(file) {
             const { id, ...rest } = m;
             batch2.set(doc(db, 'mata_mata', id || crypto.randomUUID()), rest);
         });
+        (data.matchDates || []).forEach(d => {
+            const { id, ...rest } = d;
+            batch2.set(doc(db, 'datas_jogos', id || `R${rest.rodada}_O${rest.ordem}`), rest);
+        });
+        // Migrate v1 backups: extract data_hora from matches into datas_jogos
+        if (!data.matchDates && data.matches) {
+            data.matches.forEach(m => {
+                if (m.data_hora) {
+                    const key = `R${m.rodada}_O${m.ordem ?? 0}`;
+                    batch2.set(doc(db, 'datas_jogos', key), { rodada: m.rodada, ordem: m.ordem ?? 0, data_hora: m.data_hora });
+                }
+            });
+        }
 
         await batch2.commit();
         showToast('Backup importado com sucesso!', 'success');
@@ -1382,9 +1432,8 @@ async function saveConfig() {
     const name = $('#admin-champ-name').value.trim();
     const classified = parseInt($('#admin-classified').value) || 8;
     const hideName = $('#admin-hide-name').checked;
-    const regras = state.config.regras || '';
     try {
-        await setDoc(doc(db, 'config', 'main'), { nome_campeonato: name, classificados: classified, ocultar_nome: hideName, regras });
+        await setDoc(doc(db, 'config', 'main'), { nome_campeonato: name, classificados: classified, ocultar_nome: hideName }, { merge: true });
         showToast('Configurações salvas!');
     } catch (e) {
         showError('Erro ao salvar configurações: ' + e.message);
@@ -1394,7 +1443,7 @@ async function saveConfig() {
 async function saveRules() {
     const regras = $('#admin-rules').value;
     try {
-        await setDoc(doc(db, 'config', 'main'), { ...state.config, regras });
+        await setDoc(doc(db, 'config', 'main'), { regras }, { merge: true });
         showToast('Regras salvas!');
     } catch (e) {
         showError('Erro ao salvar regras: ' + e.message);
@@ -1404,7 +1453,7 @@ async function saveRules() {
 async function saveAbout() {
     const sobre = $('#admin-about').value;
     try {
-        await setDoc(doc(db, 'config', 'main'), { ...state.config, sobre });
+        await setDoc(doc(db, 'config', 'main'), { sobre }, { merge: true });
         showToast('Sobre salvo!');
     } catch (e) {
         showError('Erro ao salvar sobre: ' + e.message);
@@ -1619,12 +1668,17 @@ async function addMatch() {
     if (!rodada || !mandante || !visitante) { showToast('Preencha rodada, mandante e visitante.', 'error'); return; }
     if (mandante === visitante) { showToast('Mandante e visitante devem ser times diferentes.', 'error'); return; }
     const ordem = state.matches.filter(m => m.rodada === rodada).length;
+    const dateVal = $('#admin-match-date').value || null;
     try {
         await addDoc(collection(db, 'jogos'), {
             rodada, mandante, visitante,
             gols_mandante: null, gols_visitante: null, ordem,
-            data_hora: $('#admin-match-date').value || null,
         });
+        // Save date to separate collection
+        if (dateVal) {
+            const dateKey = `R${rodada}_O${ordem}`;
+            await setDoc(doc(db, 'datas_jogos', dateKey), { rodada, ordem, data_hora: dateVal });
+        }
         $('#admin-match-round').value = '';
         $('#admin-match-date').value = '';
         showToast('Partida adicionada!');
@@ -1635,8 +1689,14 @@ async function addMatch() {
 
 async function deleteMatch(id) {
     if (!confirm('Excluir esta partida?')) return;
+    const m = state.matches.find(x => x.id === id);
     try {
         await deleteDoc(doc(db, 'jogos', id));
+        // Also delete the date entry
+        if (m) {
+            const dateKey = `R${m.rodada}_O${m.ordem ?? 0}`;
+            await deleteDoc(doc(db, 'datas_jogos', dateKey)).catch(() => {});
+        }
         showToast('Partida excluída.', 'info');
     } catch (e) {
         showError('Erro ao excluir partida: ' + e.message);
@@ -1646,6 +1706,9 @@ async function deleteMatch(id) {
 async function initBracket() {
     if (state.knockout.length > 0 && !confirm('Já existe um bracket. Deseja recriar?')) return;
     const structure = [
+        // Play-In: 7° vs 10° e 8° vs 9°
+        ...Array(2).fill(null).map((_, i) => ({ fase: 'playin', ordem: i, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null })),
+        // Quartas (top 6 + 2 vencedores do play-in)
         ...Array(4).fill(null).map((_, i) => ({ fase: 'quartas', ordem: i, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null })),
         ...Array(2).fill(null).map((_, i) => ({ fase: 'semis', ordem: i, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null })),
         { fase: 'final', ordem: 0, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null },
@@ -1664,7 +1727,20 @@ async function initBracket() {
 async function generateRoundRobin() {
     const teams = [...state.teams];
     if (teams.length < 2) { showToast('Cadastre pelo menos 2 times antes de gerar as rodadas.', 'error'); return; }
-    if (state.matches.length > 0 && !confirm(`Já existem ${state.matches.length} partidas cadastradas. Deseja apagar tudo e gerar novamente?`)) return;
+    if (state.matches.length > 0 && !confirm(`Já existem ${state.matches.length} partidas cadastradas. Deseja apagar tudo e gerar novamente?\n\n(As datas já preenchidas serão preservadas)`)) return;
+
+    // Migrate existing dates to datas_jogos before deleting matches
+    const dateBatch = writeBatch(db);
+    let datesMigrated = 0;
+    state.matches.forEach(m => {
+        const matchDate = getMatchDateForMatch(m);
+        if (matchDate) {
+            const key = `R${m.rodada}_O${m.ordem ?? 0}`;
+            dateBatch.set(doc(db, 'datas_jogos', key), { rodada: m.rodada, ordem: m.ordem ?? 0, data_hora: matchDate });
+            datesMigrated++;
+        }
+    });
+    if (datesMigrated > 0) await dateBatch.commit();
 
     // Circle algorithm: if odd number of teams, add a "bye" placeholder
     const list = teams.length % 2 === 0 ? [...teams] : [...teams, null];
@@ -1673,14 +1749,13 @@ async function generateRoundRobin() {
     const matchesPerRound = n / 2;
 
     const fixtures = [];
-    const rotation = list.slice(1); // all except the fixed first element
+    const rotation = list.slice(1);
 
     for (let round = 0; round < numRounds; round++) {
         const roundTeams = [list[0], ...rotation];
         for (let i = 0; i < matchesPerRound; i++) {
             const home = roundTeams[i];
             const away = roundTeams[n - 1 - i];
-            // skip bye matches
             if (home && away) {
                 fixtures.push({
                     rodada: round + 1,
@@ -1692,14 +1767,12 @@ async function generateRoundRobin() {
                 });
             }
         }
-        // rotate: move last element to front of rotation
         rotation.unshift(rotation.pop());
     }
 
     try {
         const batch = writeBatch(db);
         state.matches.forEach(m => batch.delete(doc(db, 'jogos', m.id)));
-        // Firestore batch limit is 500 ops; split if needed
         const chunkSize = 490;
         for (let i = 0; i < fixtures.length; i += chunkSize) {
             const chunk = fixtures.slice(i, i + chunkSize);
@@ -1712,7 +1785,7 @@ async function generateRoundRobin() {
                 await b2.commit();
             }
         }
-        showToast(`${fixtures.length} partidas geradas em ${numRounds} rodadas!`, 'success', 5000);
+        showToast(`${fixtures.length} partidas geradas em ${numRounds} rodadas!${datesMigrated > 0 ? ` (${datesMigrated} datas preservadas)` : ''}`, 'success', 5000);
         state.roundInitialized = false;
         showTab('jogos');
     } catch (e) {
@@ -1760,8 +1833,14 @@ function setupListeners() {
         afterUpdate();
     }, err => { console.error(err); state.dataReady.matches = true; onDataUpdate(); });
 
+    onSnapshot(collection(db, 'datas_jogos'), snap => {
+        state.matchDates = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        state.dataReady.matchDates = true;
+        afterUpdate();
+    }, err => { console.error(err); state.dataReady.matchDates = true; onDataUpdate(); });
+
     onSnapshot(collection(db, 'mata_mata'), snap => {
-        const order = { quartas: 0, semis: 1, final: 2 };
+        const order = { playin: 0, quartas: 1, semis: 2, final: 3 };
         state.knockout = snap.docs
             .map(d => ({ id: d.id, ...d.data() }))
             .sort((a, b) => (order[a.fase] - order[b.fase]) || ((a.ordem || 0) - (b.ordem || 0)));
