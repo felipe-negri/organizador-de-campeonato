@@ -487,9 +487,8 @@ function renderBracket() {
         $('#champion-banner').classList.add('hidden');
     }
 
-    // Check if bracket has play-in matches (support legacy brackets without play-in)
-    const hasPlayin = state.knockout.some(m => m.fase === 'playin');
-    const activePhases = hasPlayin ? phases : phases.filter(p => p !== 'playin');
+    // Always show play-in phase in the bracket
+    const activePhases = phases;
 
     const playinHints = [
         '5° vs 12°', '6° vs 11°', '7° vs 10°', '8° vs 9°',
