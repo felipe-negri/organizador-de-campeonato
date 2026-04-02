@@ -465,7 +465,7 @@ function updateRoundNav() {
 // ─── Render Bracket ───────────────────────────────────────────────────────────
 function renderBracket() {
     const phases = ['playin', 'quartas', 'semis', 'final'];
-    const phaseLabels = { playin: 'Play-In', quartas: 'Quartas de Final', semis: 'Semifinais', final: 'Final' };
+    const phaseLabels = { playin: 'Play In', quartas: 'Quartas de Final', semis: 'Semifinais', final: 'Final' };
     const defaultCounts = { playin: 4, quartas: 4, semis: 2, final: 1 };
 
     const finalMatch = state.knockout.find(m => m.fase === 'final');
@@ -503,7 +503,7 @@ function renderBracket() {
         html += `<div class="bracket-round${phase === 'playin' ? ' bracket-round-playin' : ''}">
             <div class="bracket-round-title">${phaseLabels[phase] || phase}</div>
             ${phase === 'playin' ? '<p class="bracket-playin-hint">5°×12° &nbsp;·&nbsp; 6°×11° &nbsp;·&nbsp; 7°×10° &nbsp;·&nbsp; 8°×9°</p>' : ''}
-            ${phase === 'quartas' ? '<p class="bracket-playin-hint">1°–4° (direto) vs vencedores Play-In (reordenados)</p>' : ''}
+            ${phase === 'quartas' ? '<p class="bracket-playin-hint">1°–4° (direto) vs vencedores Play In (reordenados)</p>' : ''}
             <div class="bracket-matches">`;
         if (matches.length === 0) {
             const count = defaultCounts[phase] || 1;
@@ -1758,7 +1758,7 @@ async function fillBracketFromStandings() {
         showToast('É necessário ter pelo menos 12 times na classificação.', 'error');
         return;
     }
-    if (!confirm('Preencher o Play-In e as Quartas com os times da classificação atual?\n\nIsso substituirá os times já inseridos nessas fases (placar não será alterado).')) return;
+    if (!confirm('Preencher o Play In e as Quartas com os times da classificação atual?\n\nIsso substituirá os times já inseridos nessas fases (placar não será alterado).')) return;
 
     const s = state.standings;
     // Play-In: 5°×12°, 6°×11°, 7°×10°, 8°×9°
@@ -1803,7 +1803,7 @@ async function fillBracketFromStandings() {
         });
 
         await batch.commit();
-        showToast('Bracket preenchido! Play-In com times 5°–12°, Quartas com 1°–4°.', 'success', 5000);
+        showToast('Bracket preenchido! Play In com times 5°–12°, Quartas com 1°–4°.', 'success', 5000);
         showTab('mata-mata');
     } catch (e) {
         showError('Erro ao preencher bracket: ' + e.message);
@@ -1843,7 +1843,7 @@ async function reseedQuartasFromPlayIn() {
             }
         });
         await batch.commit();
-        showToast('Quartas reordenadas automaticamente com base no Play-In!', 'success', 5000);
+        showToast('Quartas reordenadas automaticamente com base no Play In!', 'success', 5000);
     } catch (e) {
         console.error('Erro ao reordenar quartas:', e);
     }
