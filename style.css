@@ -1085,6 +1085,12 @@ footer {
     .champion-name {
         font-size: 1.15rem;
     }
+
+    .legend {
+        flex-direction: column;
+        gap: 0.4rem;
+        align-items: flex-start;
+    }
 }
 
 @media (min-width: 641px) and (max-width: 900px) {
