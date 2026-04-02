@@ -2211,6 +2211,9 @@ function init() {
 
     showLoading(true);
     setupListeners();
+
+    // Expose for E2E testing
+    window.__app = { state, openEditBracketModal };
 }
 
 init();
