@@ -1903,6 +1903,11 @@ async function advanceWinners(fromPhase) {
 async function generateRoundRobin() {
     const teams = [...state.teams];
     if (teams.length < 2) { showToast('Cadastre pelo menos 2 times antes de gerar as rodadas.', 'error'); return; }
+    // Shuffle teams so each generation produces different fixtures
+    for (let i = teams.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [teams[i], teams[j]] = [teams[j], teams[i]];
+    }
     if (state.matches.length > 0 && !confirm(`Já existem ${state.matches.length} partidas cadastradas. Deseja apagar tudo e gerar novamente?\n\n(As datas já preenchidas serão preservadas)`)) return;
 
     // Migrate existing dates to datas_jogos before deleting matches
