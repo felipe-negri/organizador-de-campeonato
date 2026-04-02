@@ -25,25 +25,22 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// Network-first for Firebase/API; cache-first for static assets
+// Network-first: always fetch latest, cache as offline fallback
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // Always network for Firebase
+  // Skip Firebase/Google requests (handled by their own SDKs)
   if (url.hostname.includes('firebase') || url.hostname.includes('google')) {
     return;
   }
 
-  // Cache-first for static assets
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(response => {
-        if (!response || response.status !== 200 || response.type === 'opaque') return response;
+    fetch(e.request).then(response => {
+      if (response && response.status === 200 && response.type !== 'opaque') {
         const clone = response.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-        return response;
-      }).catch(() => caches.match('./index.html'));
-    })
+      }
+      return response;
+    }).catch(() => caches.match(e.request).then(cached => cached || caches.match('./index.html')))
   );
 });
