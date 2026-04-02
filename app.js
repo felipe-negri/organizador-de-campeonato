@@ -501,7 +501,7 @@ function renderBracket() {
             .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
         html += `<div class="bracket-round${phase === 'playin' ? ' bracket-round-playin' : ''}">
             <div class="bracket-round-title">${phaseLabels[phase] || phase}</div>
-            ${phase === 'playin' ? '<p class="bracket-playin-hint">5°×12° &nbsp;·&nbsp; 6°×11° &nbsp;·&nbsp; 7°×10° &nbsp;·&nbsp; 8°×9°</p>' : ''}
+            ${phase === 'playin' ? '<p class="bracket-playin-hint">5°×12° · 6°×11° · 7°×10° · 8°×9°</p>' : ''}
             ${phase === 'quartas' ? '<p class="bracket-playin-hint">1°–4° (direto) vs vencedores Play In (reordenados)</p>' : ''}
             <div class="bracket-matches">`;
         if (matches.length === 0) {
