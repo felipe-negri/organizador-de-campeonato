@@ -1767,29 +1767,22 @@ function exportMatchesCsv() {
         return;
     }
 
-    const header = 'rodada,mandante,visitante,gols_mandante,gols_visitante,tiebreak';
+    const escape = (v) => {
+        const s = String(v ?? '');
+        return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = 'rodada,mandante,visitante,data_hora';
     const rows = matches.map(m => {
-        const escape = (v) => {
-            const s = String(v ?? '');
-            return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
-        };
-        return [
-            m.rodada ?? '',
-            escape(m.mandante ?? ''),
-            escape(m.visitante ?? ''),
-            m.gols_mandante ?? '',
-            m.gols_visitante ?? '',
-            m.tiebreak ? '1' : '',
-        ].join(',');
+        const dt = getMatchDateForMatch(m) || '';
+        return [m.rodada ?? '', escape(m.mandante ?? ''), escape(m.visitante ?? ''), dt].join(',');
     });
 
-    const csv = '\uFEFF' + [header, ...rows].join('\n'); // BOM for Excel compatibility
+    const csv = '\uFEFF' + [header, ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const date = new Date().toISOString().slice(0, 10);
     a.href = url;
-    a.download = `jogos-${date}.csv`;
+    a.download = `jogos-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     showToast('CSV exportado com sucesso!', 'success');
@@ -1805,15 +1798,12 @@ async function importMatchesCsv(file) {
             return;
         }
 
-        // Parse header
         const header = lines[0].toLowerCase().split(',').map(h => h.trim());
         const colIdx = {
             rodada: header.indexOf('rodada'),
             mandante: header.indexOf('mandante'),
             visitante: header.indexOf('visitante'),
-            gols_mandante: header.indexOf('gols_mandante'),
-            gols_visitante: header.indexOf('gols_visitante'),
-            tiebreak: header.indexOf('tiebreak'),
+            data_hora: header.indexOf('data_hora'),
         };
 
         if (colIdx.rodada < 0 || colIdx.mandante < 0 || colIdx.visitante < 0) {
@@ -1821,7 +1811,6 @@ async function importMatchesCsv(file) {
             return;
         }
 
-        // Parse CSV rows (handles quoted fields)
         function parseCsvLine(line) {
             const fields = [];
             let current = '';
@@ -1843,6 +1832,7 @@ async function importMatchesCsv(file) {
         }
 
         const rows = [];
+        const dates = [];
         for (let i = 1; i < lines.length; i++) {
             const cols = parseCsvLine(lines[i]);
             const rodada = parseInt(cols[colIdx.rodada]);
@@ -1850,11 +1840,13 @@ async function importMatchesCsv(file) {
             const visitante = cols[colIdx.visitante] || '';
             if (!rodada || !mandante || !visitante) continue;
 
-            const golsM = colIdx.gols_mandante >= 0 && cols[colIdx.gols_mandante] !== '' ? parseInt(cols[colIdx.gols_mandante]) : null;
-            const golsV = colIdx.gols_visitante >= 0 && cols[colIdx.gols_visitante] !== '' ? parseInt(cols[colIdx.gols_visitante]) : null;
-            const tiebreak = colIdx.tiebreak >= 0 && (cols[colIdx.tiebreak] === '1' || cols[colIdx.tiebreak]?.toLowerCase() === 'true');
+            const ordem = rows.filter(r => r.rodada === rodada).length;
+            rows.push({ rodada, mandante, visitante, gols_mandante: null, gols_visitante: null, tiebreak: false, ao_vivo: false, ordem });
 
-            rows.push({ rodada, mandante, visitante, gols_mandante: golsM, gols_visitante: golsV, tiebreak: !!tiebreak, ao_vivo: false });
+            const dataHora = colIdx.data_hora >= 0 ? (cols[colIdx.data_hora] || '') : '';
+            if (dataHora) {
+                dates.push({ rodada, ordem, data_hora: dataHora });
+            }
         }
 
         if (!rows.length) {
@@ -1869,20 +1861,32 @@ async function importMatchesCsv(file) {
 
         showToast('Importando partidas...', 'info', 60000);
 
-        // Delete existing matches
-        const batch = writeBatch(db);
-        const existing = await getDocs(collection(db, 'jogos'));
-        existing.docs.forEach(d => batch.delete(d.ref));
-        await batch.commit();
+        // Delete existing matches and dates
+        const delBatch = writeBatch(db);
+        const [existingMatches, existingDates] = await Promise.all([
+            getDocs(collection(db, 'jogos')),
+            getDocs(collection(db, 'datas_jogos')),
+        ]);
+        existingMatches.docs.forEach(d => delBatch.delete(d.ref));
+        existingDates.docs.forEach(d => delBatch.delete(d.ref));
+        await delBatch.commit();
 
-        // Add new matches in batches of 500
+        // Add new matches and dates
         for (let i = 0; i < rows.length; i += 500) {
             const b = writeBatch(db);
-            rows.slice(i, i + 500).forEach((m, idx) => {
-                m.ordem = idx + i;
+            rows.slice(i, i + 500).forEach(m => {
                 b.set(doc(db, 'jogos', crypto.randomUUID()), m);
             });
             await b.commit();
+        }
+
+        if (dates.length) {
+            const dateBatch = writeBatch(db);
+            dates.forEach(d => {
+                const key = `R${d.rodada}_O${d.ordem}`;
+                dateBatch.set(doc(db, 'datas_jogos', key), d);
+            });
+            await dateBatch.commit();
         }
 
         showToast(`${rows.length} partidas importadas com sucesso!`, 'success');
