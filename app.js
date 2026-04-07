@@ -1590,24 +1590,27 @@ async function requestNotificationPermission() {
 }
 
 async function savePushToken() {
-    // FCM token registration — ready for when Cloud Functions are deployed
     try {
         const { getMessaging, getToken } = await import('https://www.gstatic.com/firebasejs/12.11.0/firebase-messaging.js');
         const messaging = getMessaging(fbApp);
-        // VAPID key needs to be set in Firebase Console → Cloud Messaging → Web Push certificates
-        // Replace this placeholder with your actual VAPID key after enabling FCM
         const vapidKey = 'BDWPv_AJbjMFk6QqOk_KxXb_-HVCpnH8INM5r_JSwOZHC8XhdsCcfNbPpLJ2-QhLVdViohVPSsJapyBYMot4HgA';
-        const token = await getToken(messaging, { vapidKey });
+        const swReg = await navigator.serviceWorker.ready;
+        const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: swReg });
         if (token) {
             await setDoc(doc(db, 'push_tokens', token), {
                 token,
                 createdAt: new Date().toISOString(),
                 userAgent: navigator.userAgent,
             });
-            console.log('Push token saved.');
+            console.log('Push token saved:', token.substring(0, 20) + '...');
+            showToast('Token de push registrado! 📲');
+        } else {
+            console.warn('No FCM token received.');
+            showToast('Não foi possível registrar push. Tente novamente.', 'info');
         }
     } catch (e) {
-        console.log('FCM not available yet:', e.message);
+        console.error('FCM error:', e);
+        showToast('Erro ao registrar push: ' + e.message, 'error');
     }
 }
 
