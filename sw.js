@@ -1,4 +1,4 @@
-const CACHE_NAME = 'campeonato-v15';
+const CACHE_NAME = 'campeonato-v16';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -45,18 +45,22 @@ self.addEventListener('fetch', e => {
   );
 });
 
-// Web Push: handle incoming push notifications (ready for FCM Cloud Functions)
+// Web Push: handle incoming FCM push notifications
 self.addEventListener('push', e => {
-  const data = e.data ? e.data.json() : {};
+  const payload = e.data ? e.data.json() : {};
+  // FCM data-only messages come in payload.data
+  const data = payload.data || payload.notification || payload;
   const title = data.title || '⚽ Campeonato';
+  const body = data.body || '';
+  if (!body) return; // ignore empty pushes
   const options = {
-    body: data.body || 'Atualização do jogo ao vivo!',
+    body,
     icon: './logo-sem-fundo.png',
     badge: './logo-sem-fundo.png',
     vibrate: [200, 100, 200],
-    tag: data.tag || 'live-match',
+    tag: data.tag || 'campeonato',
     renotify: true,
-    data: { url: data.url || './' },
+    data: { url: './' },
   };
   e.waitUntil(self.registration.showNotification(title, options));
 });
