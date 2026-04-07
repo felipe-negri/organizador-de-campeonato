@@ -1596,6 +1596,11 @@ async function savePushToken() {
         const swReg = await navigator.serviceWorker.ready;
         const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: swReg });
         if (token) {
+            // Delete old token if it changed (prevents duplicate pushes)
+            const oldToken = localStorage.getItem('fcm_token');
+            if (oldToken && oldToken !== token) {
+                await deleteDoc(doc(db, 'push_tokens', oldToken)).catch(() => {});
+            }
             await setDoc(doc(db, 'push_tokens', token), {
                 token,
                 createdAt: new Date().toISOString(),

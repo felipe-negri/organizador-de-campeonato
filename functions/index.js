@@ -38,7 +38,19 @@ async function sendToAll(title, body, tag) {
   // Send in batches of 500 (FCM limit)
   for (let i = 0; i < tokens.length; i += 500) {
     const batch = tokens.slice(i, i + 500);
-    await getMessaging().sendEachForMulticast({ ...message, tokens: batch });
+    const result = await getMessaging().sendEachForMulticast({ ...message, tokens: batch });
+    // Clean up invalid/expired tokens
+    const stale = [];
+    result.responses.forEach((resp, idx) => {
+      if (!resp.success && resp.error &&
+          (resp.error.code === 'messaging/registration-token-not-registered' ||
+           resp.error.code === 'messaging/invalid-registration-token')) {
+        stale.push(batch[idx]);
+      }
+    });
+    for (const t of stale) {
+      await db.collection('push_tokens').doc(t).delete().catch(() => {});
+    }
   }
 }
 
