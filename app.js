@@ -1759,6 +1759,138 @@ async function importData(file) {
     }
 }
 
+// ─── CSV Export/Import (Jogos) ────────────────────────────────────────────────
+function exportMatchesCsv() {
+    const matches = state.matches;
+    if (!matches.length) {
+        showToast('Nenhuma partida para exportar.', 'info');
+        return;
+    }
+
+    const header = 'rodada,mandante,visitante,gols_mandante,gols_visitante,tiebreak';
+    const rows = matches.map(m => {
+        const escape = (v) => {
+            const s = String(v ?? '');
+            return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+        };
+        return [
+            m.rodada ?? '',
+            escape(m.mandante ?? ''),
+            escape(m.visitante ?? ''),
+            m.gols_mandante ?? '',
+            m.gols_visitante ?? '',
+            m.tiebreak ? '1' : '',
+        ].join(',');
+    });
+
+    const csv = '\uFEFF' + [header, ...rows].join('\n'); // BOM for Excel compatibility
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `jogos-${date}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('CSV exportado com sucesso!', 'success');
+}
+
+async function importMatchesCsv(file) {
+    if (!file) return;
+    try {
+        const text = await file.text();
+        const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) {
+            showToast('CSV vazio ou sem dados.', 'error');
+            return;
+        }
+
+        // Parse header
+        const header = lines[0].toLowerCase().split(',').map(h => h.trim());
+        const colIdx = {
+            rodada: header.indexOf('rodada'),
+            mandante: header.indexOf('mandante'),
+            visitante: header.indexOf('visitante'),
+            gols_mandante: header.indexOf('gols_mandante'),
+            gols_visitante: header.indexOf('gols_visitante'),
+            tiebreak: header.indexOf('tiebreak'),
+        };
+
+        if (colIdx.rodada < 0 || colIdx.mandante < 0 || colIdx.visitante < 0) {
+            showToast('CSV inválido. Colunas obrigatórias: rodada, mandante, visitante', 'error');
+            return;
+        }
+
+        // Parse CSV rows (handles quoted fields)
+        function parseCsvLine(line) {
+            const fields = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (inQuotes) {
+                    if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+                    else if (ch === '"') inQuotes = false;
+                    else current += ch;
+                } else {
+                    if (ch === '"') inQuotes = true;
+                    else if (ch === ',') { fields.push(current.trim()); current = ''; }
+                    else current += ch;
+                }
+            }
+            fields.push(current.trim());
+            return fields;
+        }
+
+        const rows = [];
+        for (let i = 1; i < lines.length; i++) {
+            const cols = parseCsvLine(lines[i]);
+            const rodada = parseInt(cols[colIdx.rodada]);
+            const mandante = cols[colIdx.mandante] || '';
+            const visitante = cols[colIdx.visitante] || '';
+            if (!rodada || !mandante || !visitante) continue;
+
+            const golsM = colIdx.gols_mandante >= 0 && cols[colIdx.gols_mandante] !== '' ? parseInt(cols[colIdx.gols_mandante]) : null;
+            const golsV = colIdx.gols_visitante >= 0 && cols[colIdx.gols_visitante] !== '' ? parseInt(cols[colIdx.gols_visitante]) : null;
+            const tiebreak = colIdx.tiebreak >= 0 && (cols[colIdx.tiebreak] === '1' || cols[colIdx.tiebreak]?.toLowerCase() === 'true');
+
+            rows.push({ rodada, mandante, visitante, gols_mandante: golsM, gols_visitante: golsV, tiebreak: !!tiebreak, ao_vivo: false });
+        }
+
+        if (!rows.length) {
+            showToast('Nenhuma partida válida encontrada no CSV.', 'error');
+            return;
+        }
+
+        const confirmed = confirm(
+            `Importar ${rows.length} partidas do CSV?\n\nIsso vai SUBSTITUIR todas as partidas atuais da fase de grupos.`
+        );
+        if (!confirmed) return;
+
+        showToast('Importando partidas...', 'info', 60000);
+
+        // Delete existing matches
+        const batch = writeBatch(db);
+        const existing = await getDocs(collection(db, 'jogos'));
+        existing.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+
+        // Add new matches in batches of 500
+        for (let i = 0; i < rows.length; i += 500) {
+            const b = writeBatch(db);
+            rows.slice(i, i + 500).forEach((m, idx) => {
+                m.ordem = idx + i;
+                b.set(doc(db, 'jogos', crypto.randomUUID()), m);
+            });
+            await b.commit();
+        }
+
+        showToast(`${rows.length} partidas importadas com sucesso!`, 'success');
+    } catch (e) {
+        showToast('Erro ao importar CSV: ' + e.message, 'error');
+    }
+}
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 async function adminLogin() {
     const email = $('#login-email').value.trim();
@@ -2641,6 +2773,12 @@ function init() {
     $('#admin-init-bracket').addEventListener('click', initBracket);
     $('#admin-fill-bracket').addEventListener('click', fillBracketFromStandings);
     $('#admin-generate-rounds').addEventListener('click', generateRoundRobin);
+    $('#admin-export-csv').addEventListener('click', exportMatchesCsv);
+    $('#admin-import-csv').addEventListener('change', e => {
+        const file = e.target.files[0];
+        importMatchesCsv(file);
+        e.target.value = '';
+    });
     $('#admin-export-btn').addEventListener('click', exportData);
     $('#admin-import-file').addEventListener('change', e => {
         const file = e.target.files[0];
