@@ -1563,21 +1563,27 @@ async function requestNotificationPermission() {
         showToast('Seu navegador não suporta notificações. Tente adicionar o site à tela inicial.', 'error');
         return;
     }
-    const perm = Notification.permission;
-    if (perm === 'granted') {
-        showToast('Notificações de resultados já ativadas! ✅');
-        await savePushToken();
+
+    // If already opted in, toggle OFF
+    if (localStorage.getItem('push_opted_in') === '1') {
+        await removePushToken();
+        localStorage.removeItem('push_opted_in');
+        showToast('Notificações desativadas. 🔕');
+        updateNotificationBtnState();
         return;
     }
+
+    const perm = Notification.permission;
     if (perm === 'denied') {
         showToast('Notificações foram bloqueadas. Vá em Configurações do site no navegador para desbloquear.', 'error');
         return;
     }
     try {
-        const result = await Notification.requestPermission();
+        const result = perm === 'granted' ? 'granted' : await Notification.requestPermission();
         if (result === 'granted') {
-            showToast('Pronto! Você receberá os resultados dos jogos. 🏁');
             await savePushToken();
+            localStorage.setItem('push_opted_in', '1');
+            showToast('Pronto! Você receberá os resultados dos jogos. 🏁');
         } else if (result === 'denied') {
             showToast('Permissão negada. Você pode reativar nas configurações do navegador.', 'info');
         } else {
@@ -1587,6 +1593,7 @@ async function requestNotificationPermission() {
         console.error('Notification permission error:', e);
         showToast('Erro ao solicitar notificações: ' + e.message, 'error');
     }
+    updateNotificationBtnState();
 }
 
 async function savePushToken() {
@@ -1602,8 +1609,8 @@ async function savePushToken() {
                 createdAt: new Date().toISOString(),
                 userAgent: navigator.userAgent,
             });
+            localStorage.setItem('fcm_token', token);
             console.log('Push token saved:', token.substring(0, 20) + '...');
-            showToast('Token de push registrado! 📲');
         } else {
             console.warn('No FCM token received.');
             showToast('Não foi possível registrar push. Tente novamente.', 'info');
@@ -1611,6 +1618,23 @@ async function savePushToken() {
     } catch (e) {
         console.error('FCM error:', e);
         showToast('Erro ao registrar push: ' + e.message, 'error');
+    }
+}
+
+async function removePushToken() {
+    try {
+        const token = localStorage.getItem('fcm_token');
+        if (token) {
+            await deleteDoc(doc(db, 'push_tokens', token));
+            localStorage.removeItem('fcm_token');
+            console.log('Push token removed.');
+        }
+        // Also delete token from FCM
+        const { getMessaging, deleteToken } = await import('https://www.gstatic.com/firebasejs/12.11.0/firebase-messaging.js');
+        const messaging = getMessaging(fbApp);
+        await deleteToken(messaging);
+    } catch (e) {
+        console.error('Error removing push token:', e);
     }
 }
 
@@ -1622,18 +1646,21 @@ function updateNotificationBtnState() {
         return;
     }
     btn.classList.remove('hidden');
-    const granted = Notification.permission === 'granted';
     const denied = Notification.permission === 'denied';
-    btn.title = granted ? 'Notificações de resultados ativadas' : 'Receber resultados dos jogos';
-    if (granted) {
-        btn.className = 'btn-notif btn-notif-active';
-        btn.innerHTML = '🔔 Resultados ativados';
-    } else if (denied) {
+    const optedIn = localStorage.getItem('push_opted_in') === '1';
+
+    if (denied) {
         btn.className = 'btn-notif btn-notif-denied';
         btn.innerHTML = '🔕 Bloqueado';
+        btn.title = 'Notificações bloqueadas pelo navegador';
+    } else if (optedIn) {
+        btn.className = 'btn-notif btn-notif-active';
+        btn.innerHTML = '🔔 Notificações ativas';
+        btn.title = 'Clique para desativar notificações';
     } else {
         btn.className = 'btn-notif';
         btn.innerHTML = '📲 Receber resultados';
+        btn.title = 'Clique para receber resultados dos jogos';
     }
 }
 
@@ -2473,7 +2500,6 @@ function init() {
                 console.error('Notification error:', e);
                 showToast('Erro ao solicitar permissão de notificação.', 'error');
             }
-            updateNotificationBtnState();
         });
         updateNotificationBtnState();
     }
