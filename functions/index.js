@@ -52,8 +52,8 @@ function getTimeName(teams, id) {
   return t ? t.nome : 'Time';
 }
 
-// Push when a match STARTS or ENDS
-exports.onJogoUpdate = onDocumentUpdated('campeonatos/{campId}/jogos/{jogoId}', async (event) => {
+// Push when a match STARTS or ENDS (root collection `jogos`)
+exports.onJogoUpdate = onDocumentUpdated('jogos/{jogoId}', async (event) => {
   const before = event.data.before.data();
   const after = event.data.after.data();
   if (!after) return;
@@ -62,7 +62,7 @@ exports.onJogoUpdate = onDocumentUpdated('campeonatos/{campId}/jogos/{jogoId}', 
   const ended = before.ao_vivo && !after.ao_vivo;
   if (!started && !ended) return;
 
-  const teamsSnap = await db.collection(`campeonatos/${event.params.campId}/times`).get();
+  const teamsSnap = await db.collection('times').get();
   const teams = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
   const mand = getTimeName(teams, after.mandante);
@@ -83,7 +83,7 @@ exports.onJogoUpdate = onDocumentUpdated('campeonatos/{campId}/jogos/{jogoId}', 
   }
 });
 
-exports.onMataMataUpdate = onDocumentUpdated('campeonatos/{campId}/mata_mata/{matchId}', async (event) => {
+exports.onMataMataUpdate = onDocumentUpdated('mata_mata/{matchId}', async (event) => {
   const before = event.data.before.data();
   const after = event.data.after.data();
   if (!after) return;
@@ -92,7 +92,7 @@ exports.onMataMataUpdate = onDocumentUpdated('campeonatos/{campId}/mata_mata/{ma
   const ended = before.ao_vivo && !after.ao_vivo;
   if (!started && !ended) return;
 
-  const teamsSnap = await db.collection(`campeonatos/${event.params.campId}/times`).get();
+  const teamsSnap = await db.collection('times').get();
   const teams = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
   const mand = getTimeName(teams, after.mandante);
