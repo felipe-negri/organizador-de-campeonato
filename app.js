@@ -1565,7 +1565,8 @@ async function requestNotificationPermission() {
     }
 
     // If already opted in, toggle OFF
-    if (localStorage.getItem('push_opted_in') === '1') {
+    const isOptedIn = localStorage.getItem('push_opted_in') === '1';
+    if (isOptedIn) {
         await removePushToken();
         localStorage.removeItem('push_opted_in');
         showToast('Notificações desativadas. 🔕');
@@ -1575,7 +1576,7 @@ async function requestNotificationPermission() {
 
     const perm = Notification.permission;
     if (perm === 'denied') {
-        showToast('Notificações foram bloqueadas. Vá em Configurações do site no navegador para desbloquear.', 'error');
+        showToast('Notificações bloqueadas. Libere nas configurações do navegador.', 'error');
         return;
     }
     try {
@@ -1584,16 +1585,15 @@ async function requestNotificationPermission() {
             const saved = await savePushToken();
             if (saved) {
                 localStorage.setItem('push_opted_in', '1');
-                showToast('Pronto! Você receberá os resultados dos jogos. 🏁');
+                showToast('Notificações ativadas! 🏁');
             }
         } else if (result === 'denied') {
-            showToast('Permissão negada. Você pode reativar nas configurações do navegador.', 'info');
+            showToast('Permissão negada.', 'info');
         } else {
-            showToast('Permissão de notificação não foi concedida.', 'info');
+            showToast('Permissão não concedida.', 'info');
         }
     } catch (e) {
-        console.error('Notification permission error:', e);
-        showToast('Erro ao solicitar notificações: ' + e.message, 'error');
+        showToast('Erro: ' + e.message, 'error');
     }
     updateNotificationBtnState();
 }
@@ -1612,15 +1612,11 @@ async function savePushToken() {
                 userAgent: navigator.userAgent,
             });
             localStorage.setItem('fcm_token', token);
-            console.log('Push token saved:', token.substring(0, 20) + '...');
             return true;
-        } else {
-            console.warn('No FCM token received.');
-            showToast('Não foi possível registrar push. Tente novamente.', 'info');
-            return false;
         }
+        showToast('Não foi possível registrar. Tente novamente.', 'info');
+        return false;
     } catch (e) {
-        console.error('FCM error:', e);
         showToast('Erro ao registrar push: ' + e.message, 'error');
         return false;
     }
@@ -1632,15 +1628,11 @@ async function removePushToken() {
         if (token) {
             await deleteDoc(doc(db, 'push_tokens', token));
             localStorage.removeItem('fcm_token');
-            console.log('Push token removed.');
         }
-        // Also delete token from FCM
         const { getMessaging, deleteToken } = await import('https://www.gstatic.com/firebasejs/12.11.0/firebase-messaging.js');
         const messaging = getMessaging(fbApp);
         await deleteToken(messaging);
-    } catch (e) {
-        console.error('Error removing push token:', e);
-    }
+    } catch (_) { /* ignore errors on removal */ }
 }
 
 function updateNotificationBtnState() {
