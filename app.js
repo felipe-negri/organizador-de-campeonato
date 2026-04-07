@@ -1537,24 +1537,6 @@ function showGoalToast(msg, type = 'goal') {
         el.classList.add('hiding');
         el.addEventListener('animationend', () => el.remove());
     }, 5000);
-
-    // Browser notification via Service Worker for game start and end
-    if ((type === 'end' || type === 'start') && Notification.permission === 'granted') {
-        try {
-            const title = type === 'end' ? '🏁🏁 Resultado Final' : '🔴🔴 Jogo Ao Vivo';
-            const body = msg.replace(/^[^\s]+\s/, '');
-            navigator.serviceWorker.ready.then(reg => {
-                reg.showNotification(title, {
-                    body,
-                    icon: './logo-sem-fundo.png',
-                    badge: './logo-sem-fundo.png',
-                    vibrate: [200, 100, 200],
-                    tag: type === 'end' ? 'result' : 'live-start',
-                    renotify: true,
-                });
-            });
-        } catch (_) { /* fallback: no SW available */ }
-    }
 }
 
 // ─── Push Notifications ───────────────────────────────────────────────────────
