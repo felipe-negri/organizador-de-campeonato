@@ -1,4 +1,4 @@
-const CACHE_NAME = 'campeonato-v2';
+const CACHE_NAME = 'campeonato-v3';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -42,5 +42,37 @@ self.addEventListener('fetch', e => {
       }
       return response;
     }).catch(() => caches.match(e.request).then(cached => cached || caches.match('./index.html')))
+  );
+});
+
+// Web Push: handle incoming push notifications (ready for FCM Cloud Functions)
+self.addEventListener('push', e => {
+  const data = e.data ? e.data.json() : {};
+  const title = data.title || '⚽ Campeonato';
+  const options = {
+    body: data.body || 'Atualização do jogo ao vivo!',
+    icon: './logo-sem-fundo.png',
+    badge: './logo-sem-fundo.png',
+    vibrate: [200, 100, 200],
+    tag: data.tag || 'live-match',
+    renotify: true,
+    data: { url: data.url || './' },
+  };
+  e.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Open app when notification is clicked
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = e.notification.data?.url || './';
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const client of list) {
+        if (client.url.includes('brasileiraoftv') || client.url.includes('organizador-de-campeonato')) {
+          return client.focus();
+        }
+      }
+      return clients.openWindow(url);
+    })
   );
 });

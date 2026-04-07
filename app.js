@@ -1488,6 +1488,129 @@ async function endLiveMatch() {
     }
 }
 
+// ─── Live Score Notifications ─────────────────────────────────────────────────
+function notifyLiveScoreChanges(oldList, newList, type) {
+    const oldMap = {};
+    oldList.forEach(m => { oldMap[m.id] = m; });
+
+    newList.forEach(m => {
+        if (!m.ao_vivo) {
+            // Check if match just ended (was live, now isn't)
+            const old = oldMap[m.id];
+            if (old && old.ao_vivo) {
+                const home = type === 'bracket' ? m.time1 : m.mandante;
+                const away = type === 'bracket' ? m.time2 : m.visitante;
+                const gh = type === 'bracket' ? (m.gols1 ?? 0) : (m.gols_mandante ?? 0);
+                const ga = type === 'bracket' ? (m.gols2 ?? 0) : (m.gols_visitante ?? 0);
+                showGoalToast(`🏁 Fim de jogo! ${home} ${gh} × ${ga} ${away}`, 'end');
+            }
+            return;
+        }
+        const old = oldMap[m.id];
+        if (!old) return;
+
+        const home = type === 'bracket' ? m.time1 : m.mandante;
+        const away = type === 'bracket' ? m.time2 : m.visitante;
+        const newHome = type === 'bracket' ? (m.gols1 ?? 0) : (m.gols_mandante ?? 0);
+        const newAway = type === 'bracket' ? (m.gols2 ?? 0) : (m.gols_visitante ?? 0);
+        const oldHome = type === 'bracket' ? (old.gols1 ?? 0) : (old.gols_mandante ?? 0);
+        const oldAway = type === 'bracket' ? (old.gols2 ?? 0) : (old.gols_visitante ?? 0);
+
+        if (!old.ao_vivo && m.ao_vivo) {
+            // Match just started
+            showGoalToast(`▶️ Começou! ${home} vs ${away}`, 'start');
+        } else if (newHome > oldHome) {
+            showGoalToast(`⚽ GOL! ${home}! ${home} ${newHome} × ${newAway} ${away}`, 'goal');
+        } else if (newAway > oldAway) {
+            showGoalToast(`⚽ GOL! ${away}! ${home} ${newHome} × ${newAway} ${away}`, 'goal');
+        }
+    });
+}
+
+function showGoalToast(msg, type = 'goal') {
+    const el = document.createElement('div');
+    const bgMap = { goal: 'toast-goal', start: 'toast-live-start', end: 'toast-live-end' };
+    el.className = `toast ${bgMap[type] || 'toast-goal'}`;
+    el.innerHTML = `<span>${msg}</span>`;
+    $('#toast-container').appendChild(el);
+    setTimeout(() => {
+        el.classList.add('hiding');
+        el.addEventListener('animationend', () => el.remove());
+    }, 5000);
+
+    // Also send browser notification if permitted
+    if (Notification.permission === 'granted') {
+        try {
+            const icon = './logo-sem-fundo.png';
+            new Notification(type === 'goal' ? '⚽ GOL!' : type === 'start' ? '▶️ Jogo Ao Vivo' : '🏁 Fim de Jogo', { body: msg.replace(/^[^\s]+\s/, ''), icon });
+        } catch (_) { /* mobile may not support Notification constructor */ }
+    }
+}
+
+// ─── Push Notifications ───────────────────────────────────────────────────────
+async function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+        showToast('Seu navegador não suporta notificações.', 'error');
+        return;
+    }
+    if (Notification.permission === 'granted') {
+        showToast('Notificações já estão ativadas! ✅');
+        return;
+    }
+    if (Notification.permission === 'denied') {
+        showToast('Notificações foram bloqueadas. Libere nas configurações do navegador.', 'error');
+        return;
+    }
+    const result = await Notification.requestPermission();
+    if (result === 'granted') {
+        showToast('Notificações ativadas! Você será notificado sobre gols ao vivo. ⚽');
+        await savePushToken();
+    } else {
+        showToast('Notificações não foram permitidas.', 'info');
+    }
+}
+
+async function savePushToken() {
+    // FCM token registration — ready for when Cloud Functions are deployed
+    try {
+        const { getMessaging, getToken } = await import('https://www.gstatic.com/firebasejs/12.11.0/firebase-messaging.js');
+        const messaging = getMessaging(fbApp);
+        // VAPID key needs to be set in Firebase Console → Cloud Messaging → Web Push certificates
+        // Replace this placeholder with your actual VAPID key after enabling FCM
+        const vapidKey = localStorage.getItem('fcm_vapid_key');
+        if (!vapidKey) {
+            console.log('FCM VAPID key not configured. Push notifications via FCM not available yet.');
+            return;
+        }
+        const token = await getToken(messaging, { vapidKey });
+        if (token) {
+            await setDoc(doc(db, 'push_tokens', token), {
+                token,
+                createdAt: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+            });
+            console.log('Push token saved.');
+        }
+    } catch (e) {
+        console.log('FCM not available yet:', e.message);
+    }
+}
+
+function updateNotificationBtnState() {
+    const btn = $('#notification-toggle');
+    if (!btn) return;
+    if (!('Notification' in window)) {
+        btn.classList.add('hidden');
+        return;
+    }
+    btn.classList.remove('hidden');
+    const granted = Notification.permission === 'granted';
+    btn.title = granted ? 'Notificações ativadas' : 'Ativar notificações de gol';
+    btn.innerHTML = granted
+        ? '<span style="font-size:1.1rem">🔔</span>'
+        : '<span style="font-size:1.1rem">🔕</span>';
+}
+
 // ─── Export / Import ──────────────────────────────────────────────────────────
 function exportData() {
     const data = {
@@ -2276,9 +2399,14 @@ function setupListeners() {
     }, err => { console.error(err); state.dataReady.teams = true; onDataUpdate(); });
 
     onSnapshot(collection(db, 'jogos'), snap => {
-        state.matches = snap.docs
+        const newMatches = snap.docs
             .map(d => ({ id: d.id, ...d.data() }))
             .sort((a, b) => (a.rodada - b.rodada) || ((a.ordem || 0) - (b.ordem || 0)));
+        // Detect live score changes for goal notifications
+        if (state.dataReady.matches) {
+            notifyLiveScoreChanges(state.matches, newMatches, 'match');
+        }
+        state.matches = newMatches;
         state.dataReady.matches = true;
         afterUpdate();
     }, err => { console.error(err); state.dataReady.matches = true; onDataUpdate(); });
@@ -2291,9 +2419,13 @@ function setupListeners() {
 
     onSnapshot(collection(db, 'mata_mata'), snap => {
         const order = { playin: 0, quartas: 1, semis: 2, final: 3 };
-        state.knockout = snap.docs
+        const newKnockout = snap.docs
             .map(d => ({ id: d.id, ...d.data() }))
             .sort((a, b) => (order[a.fase] - order[b.fase]) || ((a.ordem || 0) - (b.ordem || 0)));
+        if (state.dataReady.knockout) {
+            notifyLiveScoreChanges(state.knockout, newKnockout, 'bracket');
+        }
+        state.knockout = newKnockout;
         state.dataReady.knockout = true;
         afterUpdate(true);
     }, err => { console.error(err); state.dataReady.knockout = true; onDataUpdate(); });
@@ -2304,6 +2436,13 @@ function init() {
     applyTheme(state.theme);
 
     $('#theme-toggle').addEventListener('click', () => applyTheme(state.theme === 'dark' ? 'light' : 'dark'));
+
+    // Notification bell
+    $('#notification-toggle').addEventListener('click', async () => {
+        await requestNotificationPermission();
+        updateNotificationBtnState();
+    });
+    updateNotificationBtnState();
 
     $$('.nav-tab').forEach(tab => tab.addEventListener('click', () => showTab(tab.dataset.tab)));
 
