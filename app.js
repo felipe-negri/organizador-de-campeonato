@@ -1538,11 +1538,10 @@ function showGoalToast(msg, type = 'goal') {
         el.addEventListener('animationend', () => el.remove());
     }, 5000);
 
-    // Also send browser notification if permitted
-    if (Notification.permission === 'granted') {
+    // Browser notification only for game end results
+    if (type === 'end' && Notification.permission === 'granted') {
         try {
-            const icon = './logo-sem-fundo.png';
-            new Notification(type === 'goal' ? '⚽ GOL!' : type === 'start' ? '▶️ Jogo Ao Vivo' : '🏁 Fim de Jogo', { body: msg.replace(/^[^\s]+\s/, ''), icon });
+            new Notification('🏁 Resultado Final', { body: msg.replace(/^[^\s]+\s/, ''), icon: './logo-sem-fundo.png' });
         } catch (_) { /* mobile may not support Notification constructor */ }
     }
 }
@@ -1554,7 +1553,7 @@ async function requestNotificationPermission() {
         return;
     }
     if (Notification.permission === 'granted') {
-        showToast('Notificações já estão ativadas! ✅');
+        showToast('Notificações de resultados já ativadas! ✅');
         return;
     }
     if (Notification.permission === 'denied') {
@@ -1563,7 +1562,7 @@ async function requestNotificationPermission() {
     }
     const result = await Notification.requestPermission();
     if (result === 'granted') {
-        showToast('Notificações ativadas! Você será notificado sobre gols ao vivo. ⚽');
+        showToast('Pronto! Você receberá os resultados dos jogos. 🏁');
         await savePushToken();
     } else {
         showToast('Notificações não foram permitidas.', 'info');
@@ -1605,10 +1604,18 @@ function updateNotificationBtnState() {
     }
     btn.classList.remove('hidden');
     const granted = Notification.permission === 'granted';
-    btn.title = granted ? 'Notificações ativadas' : 'Ativar notificações de gol';
-    btn.innerHTML = granted
-        ? '<span style="font-size:1.1rem">🔔</span>'
-        : '<span style="font-size:1.1rem">🔕</span>';
+    const denied = Notification.permission === 'denied';
+    btn.title = granted ? 'Notificações de resultados ativadas' : 'Receber resultados dos jogos';
+    if (granted) {
+        btn.className = 'btn-notif btn-notif-active';
+        btn.innerHTML = '🔔 Resultados ativados';
+    } else if (denied) {
+        btn.className = 'btn-notif btn-notif-denied';
+        btn.innerHTML = '🔕 Bloqueado';
+    } else {
+        btn.className = 'btn-notif';
+        btn.innerHTML = '📲 Receber resultados';
+    }
 }
 
 // ─── Export / Import ──────────────────────────────────────────────────────────

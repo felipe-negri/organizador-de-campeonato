@@ -2530,3 +2530,54 @@ footer {
     from { transform: translateX(100%); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
 }
+
+/* Notification opt-in button */
+.btn-notif {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.7rem;
+    border: 1.5px solid var(--primary);
+    border-radius: var(--radius-lg);
+    background: transparent;
+    color: var(--primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+.btn-notif:hover {
+    background: var(--primary);
+    color: #fff;
+    transform: scale(1.03);
+}
+.btn-notif-active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+    cursor: default;
+    opacity: 0.85;
+}
+.btn-notif-active:hover {
+    transform: none;
+    opacity: 1;
+}
+.btn-notif-denied {
+    border-color: var(--text-muted);
+    color: var(--text-muted);
+    opacity: 0.6;
+    cursor: help;
+}
+.btn-notif-denied:hover {
+    background: transparent;
+    color: var(--text-muted);
+    transform: none;
+}
+
+@media (max-width: 600px) {
+    .btn-notif {
+        font-size: 0.7rem;
+        padding: 0.3rem 0.55rem;
+    }
+}

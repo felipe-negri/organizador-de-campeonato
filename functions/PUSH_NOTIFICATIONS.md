@@ -53,9 +53,10 @@ Juiz atualiza placar → Firestore salva → Cloud Function detecta mudança
 
 | Evento | Título | Corpo |
 |--------|--------|-------|
-| Jogo começou | 🔴 Jogo Ao Vivo! | Time A vs Time B começou agora! |
-| Gol marcado | ⚽ GOL! Time A | Time A 2 × 1 Time B |
-| Jogo terminou | 🏁 Fim de Jogo! | Time A 2 × 1 Time B |
+| Jogo terminou | 🏁 Resultado Final | Time A 2 × 1 Time B |
+
+> ℹ️ Gols e início de jogo são exibidos apenas como **toast in-app** (para quem está no site).  
+> Push notifications são enviadas **somente quando o jogo termina** com o resultado final.
 
 ## Custos Estimados
 

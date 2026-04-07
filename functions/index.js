@@ -1,13 +1,12 @@
 /**
- * Cloud Functions para notificações push de jogos ao vivo.
+ * Cloud Functions para notificações push de resultados de jogos.
  *
  * Pré-requisitos:
  *  1. Firebase Blaze plan (pay-as-you-go)
  *  2. `firebase init functions` já executado
  *  3. `firebase deploy --only functions`
  *
- * Coleta tokens FCM da coleção `push_tokens` e envia
- * para todos quando há mudança de placar em jogos ao vivo.
+ * Envia push apenas quando um jogo ao vivo TERMINA (resultado final).
  */
 
 const { onDocumentUpdated } = require('firebase-functions/v2/firestore');
@@ -53,67 +52,31 @@ function getTimeName(teams, id) {
   return t ? t.nome : 'Time';
 }
 
-// Watch `jogos` collection for live match changes
+// Push only when a match ENDS (ao_vivo true → false)
 exports.onJogoUpdate = onDocumentUpdated('campeonatos/{campId}/jogos/{jogoId}', async (event) => {
   const before = event.data.before.data();
   const after = event.data.after.data();
   if (!after) return;
+  if (!before.ao_vivo || after.ao_vivo) return; // Only when match just ended
 
-  // Fetch teams for names
   const teamsSnap = await db.collection(`campeonatos/${event.params.campId}/times`).get();
   const teams = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
   const mand = getTimeName(teams, after.mandante);
   const visit = getTimeName(teams, after.visitante);
 
-  // Match just started
-  if (!before.ao_vivo && after.ao_vivo) {
-    await sendToAll(
-      '🔴 Jogo Ao Vivo!',
-      `${mand} vs ${visit} começou agora!`,
-      `live-start-${event.params.jogoId}`
-    );
-    return;
-  }
-
-  // Match ended
-  if (before.ao_vivo && !after.ao_vivo) {
-    await sendToAll(
-      '🏁 Fim de Jogo!',
-      `${mand} ${after.gols_mandante ?? 0} × ${after.gols_visitante ?? 0} ${visit}`,
-      `live-end-${event.params.jogoId}`
-    );
-    return;
-  }
-
-  // Score changed during live match
-  if (after.ao_vivo) {
-    const golsMandBefore = before.gols_mandante ?? 0;
-    const golsVisitBefore = before.gols_visitante ?? 0;
-    const golsMandAfter = after.gols_mandante ?? 0;
-    const golsVisitAfter = after.gols_visitante ?? 0;
-
-    if (golsMandAfter > golsMandBefore) {
-      await sendToAll(
-        `⚽ GOL! ${mand}`,
-        `${mand} ${golsMandAfter} × ${golsVisitAfter} ${visit}`,
-        `goal-${event.params.jogoId}`
-      );
-    } else if (golsVisitAfter > golsVisitBefore) {
-      await sendToAll(
-        `⚽ GOL! ${visit}`,
-        `${mand} ${golsMandAfter} × ${golsVisitAfter} ${visit}`,
-        `goal-${event.params.jogoId}`
-      );
-    }
-  }
+  await sendToAll(
+    '🏁 Resultado Final',
+    `${mand} ${after.gols_mandante ?? 0} × ${after.gols_visitante ?? 0} ${visit}`,
+    `result-${event.params.jogoId}`
+  );
 });
 
-// Watch `mata_mata` collection too
 exports.onMataMataUpdate = onDocumentUpdated('campeonatos/{campId}/mata_mata/{matchId}', async (event) => {
   const before = event.data.before.data();
   const after = event.data.after.data();
   if (!after) return;
+  if (!before.ao_vivo || after.ao_vivo) return;
 
   const teamsSnap = await db.collection(`campeonatos/${event.params.campId}/times`).get();
   const teams = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -121,42 +84,9 @@ exports.onMataMataUpdate = onDocumentUpdated('campeonatos/{campId}/mata_mata/{ma
   const mand = getTimeName(teams, after.mandante);
   const visit = getTimeName(teams, after.visitante);
 
-  if (!before.ao_vivo && after.ao_vivo) {
-    await sendToAll(
-      '🔴 Mata-Mata Ao Vivo!',
-      `${mand} vs ${visit} começou agora!`,
-      `live-start-${event.params.matchId}`
-    );
-    return;
-  }
-
-  if (before.ao_vivo && !after.ao_vivo) {
-    await sendToAll(
-      '🏁 Fim de Jogo (Mata-Mata)!',
-      `${mand} ${after.gols_mandante ?? 0} × ${after.gols_visitante ?? 0} ${visit}`,
-      `live-end-${event.params.matchId}`
-    );
-    return;
-  }
-
-  if (after.ao_vivo) {
-    const golsMandBefore = before.gols_mandante ?? 0;
-    const golsVisitBefore = before.gols_visitante ?? 0;
-    const golsMandAfter = after.gols_mandante ?? 0;
-    const golsVisitAfter = after.gols_visitante ?? 0;
-
-    if (golsMandAfter > golsMandBefore) {
-      await sendToAll(
-        `⚽ GOL! ${mand}`,
-        `${mand} ${golsMandAfter} × ${golsVisitAfter} ${visit}`,
-        `goal-${event.params.matchId}`
-      );
-    } else if (golsVisitAfter > golsVisitBefore) {
-      await sendToAll(
-        `⚽ GOL! ${visit}`,
-        `${mand} ${golsMandAfter} × ${golsVisitAfter} ${visit}`,
-        `goal-${event.params.matchId}`
-      );
-    }
-  }
+  await sendToAll(
+    '🏁 Resultado Final (Mata-Mata)',
+    `${mand} ${after.gols_mandante ?? 0} × ${after.gols_visitante ?? 0} ${visit}`,
+    `result-${event.params.matchId}`
+  );
 });
