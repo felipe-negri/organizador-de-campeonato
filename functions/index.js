@@ -27,15 +27,10 @@ async function sendToAll(title, body, tag) {
   if (!tokens.length) return;
 
   const message = {
-    notification: { title, body },
     data: { title, body, tag },
     webpush: {
-      notification: {
-        icon: '/logo-sem-fundo.png',
-        badge: '/logo-sem-fundo.png',
-        vibrate: [200, 100, 200],
-        tag,
-        renotify: true,
+      fcmOptions: {
+        link: '/',
       },
     },
   };
