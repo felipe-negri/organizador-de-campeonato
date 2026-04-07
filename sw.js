@@ -1,4 +1,4 @@
-const CACHE_NAME = 'campeonato-v16';
+const CACHE_NAME = 'campeonato-v17';
 const STATIC_ASSETS = [
   './',
   './index.html',

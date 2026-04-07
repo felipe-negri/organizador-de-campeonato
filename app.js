@@ -1502,7 +1502,7 @@ function notifyLiveScoreChanges(oldList, newList, type) {
                 const away = type === 'bracket' ? m.time2 : m.visitante;
                 const gh = type === 'bracket' ? (m.gols1 ?? 0) : (m.gols_mandante ?? 0);
                 const ga = type === 'bracket' ? (m.gols2 ?? 0) : (m.gols_visitante ?? 0);
-                showGoalToast(`🏁 Fim de jogo! ${home} ${gh} × ${ga} ${away}`, 'end');
+                showGoalToast(`🏁🏁 Fim de jogo! ${home} ${gh} × ${ga} ${away} ⚽🏆`, 'end');
             }
             return;
         }
@@ -1518,11 +1518,11 @@ function notifyLiveScoreChanges(oldList, newList, type) {
 
         if (!old.ao_vivo && m.ao_vivo) {
             // Match just started
-            showGoalToast(`▶️ Começou! ${home} vs ${away}`, 'start');
+            showGoalToast(`▶️🔴 Começou! ${home} vs ${away} 🏐🔥`, 'start');
         } else if (newHome > oldHome) {
-            showGoalToast(`⚽ GOL! ${home}! ${home} ${newHome} × ${newAway} ${away}`, 'goal');
+            showGoalToast(`⚽🔥 GOL! ${home}! ${home} ${newHome} × ${newAway} ${away}`, 'goal');
         } else if (newAway > oldAway) {
-            showGoalToast(`⚽ GOL! ${away}! ${home} ${newHome} × ${newAway} ${away}`, 'goal');
+            showGoalToast(`⚽🔥 GOL! ${away}! ${home} ${newHome} × ${newAway} ${away}`, 'goal');
         }
     });
 }
@@ -1541,7 +1541,7 @@ function showGoalToast(msg, type = 'goal') {
     // Browser notification via Service Worker for game start and end
     if ((type === 'end' || type === 'start') && Notification.permission === 'granted') {
         try {
-            const title = type === 'end' ? '🏁 Resultado Final' : '🔴 Jogo Ao Vivo';
+            const title = type === 'end' ? '🏁🏁 Resultado Final' : '🔴🔴 Jogo Ao Vivo';
             const body = msg.replace(/^[^\s]+\s/, '');
             navigator.serviceWorker.ready.then(reg => {
                 reg.showNotification(title, {
