@@ -61,7 +61,7 @@ async function notifyMatch(event, collection) {
 
   if (started) {
     await sendToAll(
-      `�� Jogo Ao Vivo${label}! 🔴`,
+      `🔴 Jogo Ao Vivo${label}! 🔴`,
       `${home || 'Time'} vs ${away || 'Time'} começou agora! 🏐🔥`,
       `live-start-${docId}`
     );
