@@ -1644,6 +1644,12 @@ function updateNotificationBtnState() {
     }
     btn.classList.remove('hidden');
     const denied = Notification.permission === 'denied';
+
+    // Auto-detect: if permission granted + token exists but flag missing, set it
+    if (Notification.permission === 'granted' && localStorage.getItem('fcm_token') && !localStorage.getItem('push_opted_in')) {
+        localStorage.setItem('push_opted_in', '1');
+    }
+
     const optedIn = localStorage.getItem('push_opted_in') === '1';
 
     if (denied) {
