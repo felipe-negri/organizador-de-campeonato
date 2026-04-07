@@ -1577,11 +1577,7 @@ async function savePushToken() {
         const messaging = getMessaging(fbApp);
         // VAPID key needs to be set in Firebase Console → Cloud Messaging → Web Push certificates
         // Replace this placeholder with your actual VAPID key after enabling FCM
-        const vapidKey = localStorage.getItem('fcm_vapid_key');
-        if (!vapidKey) {
-            console.log('FCM VAPID key not configured. Push notifications via FCM not available yet.');
-            return;
-        }
+        const vapidKey = 'BDWPv_AJbjMFk6QqOk_KxXb_-HVCpnH8INM5r_JSwOZHC8XhdsCcfNbPpLJ2-QhLVdViohVPSsJapyBYMot4HgA';
         const token = await getToken(messaging, { vapidKey });
         if (token) {
             await setDoc(doc(db, 'push_tokens', token), {
