@@ -1538,10 +1538,11 @@ function showGoalToast(msg, type = 'goal') {
         el.addEventListener('animationend', () => el.remove());
     }, 5000);
 
-    // Browser notification only for game end results
-    if (type === 'end' && Notification.permission === 'granted') {
+    // Browser notification for game start and end
+    if ((type === 'end' || type === 'start') && Notification.permission === 'granted') {
         try {
-            new Notification('🏁 Resultado Final', { body: msg.replace(/^[^\s]+\s/, ''), icon: './logo-sem-fundo.png' });
+            const title = type === 'end' ? '🏁 Resultado Final' : '🔴 Jogo Ao Vivo';
+            new Notification(title, { body: msg.replace(/^[^\s]+\s/, ''), icon: './logo-sem-fundo.png' });
         } catch (_) { /* mobile may not support Notification constructor */ }
     }
 }

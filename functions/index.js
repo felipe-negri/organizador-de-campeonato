@@ -52,12 +52,15 @@ function getTimeName(teams, id) {
   return t ? t.nome : 'Time';
 }
 
-// Push only when a match ENDS (ao_vivo true → false)
+// Push when a match STARTS or ENDS
 exports.onJogoUpdate = onDocumentUpdated('campeonatos/{campId}/jogos/{jogoId}', async (event) => {
   const before = event.data.before.data();
   const after = event.data.after.data();
   if (!after) return;
-  if (!before.ao_vivo || after.ao_vivo) return; // Only when match just ended
+
+  const started = !before.ao_vivo && after.ao_vivo;
+  const ended = before.ao_vivo && !after.ao_vivo;
+  if (!started && !ended) return;
 
   const teamsSnap = await db.collection(`campeonatos/${event.params.campId}/times`).get();
   const teams = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -65,18 +68,29 @@ exports.onJogoUpdate = onDocumentUpdated('campeonatos/{campId}/jogos/{jogoId}', 
   const mand = getTimeName(teams, after.mandante);
   const visit = getTimeName(teams, after.visitante);
 
-  await sendToAll(
-    '🏁 Resultado Final',
-    `${mand} ${after.gols_mandante ?? 0} × ${after.gols_visitante ?? 0} ${visit}`,
-    `result-${event.params.jogoId}`
-  );
+  if (started) {
+    await sendToAll(
+      '🔴 Jogo Ao Vivo!',
+      `${mand} vs ${visit} começou agora!`,
+      `live-start-${event.params.jogoId}`
+    );
+  } else {
+    await sendToAll(
+      '🏁 Resultado Final',
+      `${mand} ${after.gols_mandante ?? 0} × ${after.gols_visitante ?? 0} ${visit}`,
+      `result-${event.params.jogoId}`
+    );
+  }
 });
 
 exports.onMataMataUpdate = onDocumentUpdated('campeonatos/{campId}/mata_mata/{matchId}', async (event) => {
   const before = event.data.before.data();
   const after = event.data.after.data();
   if (!after) return;
-  if (!before.ao_vivo || after.ao_vivo) return;
+
+  const started = !before.ao_vivo && after.ao_vivo;
+  const ended = before.ao_vivo && !after.ao_vivo;
+  if (!started && !ended) return;
 
   const teamsSnap = await db.collection(`campeonatos/${event.params.campId}/times`).get();
   const teams = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -84,9 +98,17 @@ exports.onMataMataUpdate = onDocumentUpdated('campeonatos/{campId}/mata_mata/{ma
   const mand = getTimeName(teams, after.mandante);
   const visit = getTimeName(teams, after.visitante);
 
-  await sendToAll(
-    '🏁 Resultado Final (Mata-Mata)',
-    `${mand} ${after.gols_mandante ?? 0} × ${after.gols_visitante ?? 0} ${visit}`,
-    `result-${event.params.matchId}`
-  );
+  if (started) {
+    await sendToAll(
+      '🔴 Mata-Mata Ao Vivo!',
+      `${mand} vs ${visit} começou agora!`,
+      `live-start-${event.params.matchId}`
+    );
+  } else {
+    await sendToAll(
+      '🏁 Resultado Final (Mata-Mata)',
+      `${mand} ${after.gols_mandante ?? 0} × ${after.gols_visitante ?? 0} ${visit}`,
+      `result-${event.params.matchId}`
+    );
+  }
 });
