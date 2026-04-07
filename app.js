@@ -127,6 +127,8 @@ const state = {
     editingMatch: null,
     editingMatchId: null,
     editingBracket: null,
+    editingLiveMatch: null,
+    editingLiveType: null, // 'match' or 'bracket'
     editingTeamId: null,
     userEmail: null,
     userRole: null,
@@ -149,8 +151,10 @@ const ALL_PERMISSIONS = [
     { key: 'matches.score', label: 'Editar placar' },
     { key: 'matches.delete', label: 'Excluir partidas' },
     { key: 'matches.generate', label: 'Gerar rodadas' },
+    { key: 'matches.live', label: 'Iniciar/encerrar jogo ao vivo' },
     { key: 'bracket.init', label: 'Inicializar mata-mata' },
     { key: 'bracket.score', label: 'Editar placar mata-mata' },
+    { key: 'bracket.live', label: 'Iniciar/encerrar ao vivo mata-mata' },
     { key: 'backup.export', label: 'Exportar dados' },
     { key: 'backup.import', label: 'Importar dados' },
     { key: 'users.manage', label: 'Gerenciar usuários' },
@@ -246,6 +250,7 @@ function calculateStandings() {
 
     state.matches.forEach(m => {
         if (m.gols_mandante == null || m.gols_visitante == null) return;
+        if (m.ao_vivo) return; // live matches not counted until finished
         const home = stats[m.mandante];
         const away = stats[m.visitante];
         if (!home || !away) return;
@@ -313,8 +318,12 @@ function renderAll() {
 
 // ─── Render Standings ─────────────────────────────────────────────────────────
 function renderStandings() {
-    const totalPlayed = state.matches.filter(m => m.gols_mandante != null).length;
-    $('#matches-played-badge').textContent = `${totalPlayed}/${state.matches.length} jogos`;
+    const totalPlayed = state.matches.filter(m => m.gols_mandante != null && !m.ao_vivo).length;
+    const liveCount = state.matches.filter(m => m.ao_vivo).length;
+    const playedText = liveCount > 0
+        ? `${totalPlayed}/${state.matches.length} jogos · ${liveCount} ao vivo`
+        : `${totalPlayed}/${state.matches.length} jogos`;
+    $('#matches-played-badge').textContent = playedText;
 
     const totalRounds = state.matches.length > 0
         ? Math.max(...state.matches.map(m => m.rodada || 0))
@@ -330,6 +339,22 @@ function renderStandings() {
     // Zone boundaries: top 4 = direct quartas, 5-12 = play-in, 13+ = eliminated
     const directQualify = Math.min(4, numTeams);
     const playinEnd = Math.min(12, numTeams);
+
+    // Build a map of teams currently in live matches
+    const liveMatchByTeam = {};
+    state.matches.forEach(m => {
+        if (!m.ao_vivo) return;
+        const info = { mandante: m.mandante, visitante: m.visitante, gols_mandante: m.gols_mandante || 0, gols_visitante: m.gols_visitante || 0 };
+        liveMatchByTeam[m.mandante] = info;
+        liveMatchByTeam[m.visitante] = info;
+    });
+    // Also check knockout for live matches
+    state.knockout.forEach(m => {
+        if (!m.ao_vivo) return;
+        const info = { mandante: m.time1, visitante: m.time2, gols_mandante: m.gols1 || 0, gols_visitante: m.gols2 || 0 };
+        if (m.time1) liveMatchByTeam[m.time1] = info;
+        if (m.time2) liveMatchByTeam[m.time2] = info;
+    });
 
     let html = '';
     state.standings.forEach((t, i) => {
@@ -349,11 +374,17 @@ function renderStandings() {
             rowClass = 'eliminated-zone';
         }
 
+        const liveInfo = liveMatchByTeam[t.name];
+        const liveDotHtml = liveInfo
+            ? `<span class="standings-live-wrap" data-live-home="${liveInfo.mandante}" data-live-away="${liveInfo.visitante}" data-live-gh="${liveInfo.gols_mandante}" data-live-ga="${liveInfo.gols_visitante}"><span class="live-dot live-dot-sm"></span></span>`
+            : '';
+
         html += `<tr class="${rowClass}">
             <td class="col-pos">${pos}</td>
             <td class="col-team">
                 ${teamColorPill(t, 16)}
                 <span class="team-name-link" data-team="${t.name}" style="margin-left:6px">${t.name}</span>
+                ${liveDotHtml}
             </td>
             <td class="col-stat-pts">${t.pts}</td>
             <td>${t.played}</td>
@@ -368,6 +399,7 @@ function renderStandings() {
     });
     $('#standings-body').innerHTML = html;
     bindTeamPopovers();
+    bindLivePopovers();
 }
 
 // ─── Render Matches ───────────────────────────────────────────────────────────
@@ -405,7 +437,8 @@ function renderMatches() {
 
     let html = '';
     roundMatches.forEach(m => {
-        const played = m.gols_mandante != null;
+        const played = m.gols_mandante != null && !m.ao_vivo;
+        const isLive = !!m.ao_vivo;
         const homeTeam = teamMap[m.mandante] || { cor: '#888' };
         const awayTeam = teamMap[m.visitante] || { cor: '#888' };
         let homeWinner = '', awayWinner = '';
@@ -418,24 +451,41 @@ function renderMatches() {
         const dateInfo = matchDate
             ? `<div class="match-date-info">📅 ${formatDate(matchDate)}</div>`
             : `<div class="match-date-info match-date-tbd">📅 A definir</div>`;
-        html += `<div class="match-card ${played ? '' : 'not-played'}">
+        const liveHeader = isLive ? `<div class="match-live-header"><span class="live-badge"><span class="live-dot live-dot-sm"></span> AO VIVO</span></div>` : '';
+        const cardClass = isLive ? 'live-match' : (played ? '' : 'not-played');
+
+        // Buttons
+        let actionBtns = '';
+        if (isLive && hasAnyPerm('matches.live', 'matches.score')) {
+            actionBtns = `<button class="live-manage-btn btn-live-start" data-id="${m.id}" title="Gerenciar ao vivo"><span class="live-dot live-dot-sm"></span> Gerenciar</button>`;
+        } else if (!played && !isLive && hasPerm('matches.live') && m.gols_mandante == null) {
+            actionBtns = `<button class="live-start-btn btn-live-start" data-id="${m.id}" title="Iniciar jogo ao vivo">▶ Ao Vivo</button>`;
+        }
+        if (!isLive && hasPerm('matches.score')) {
+            actionBtns += `<button class="edit-match-btn" data-id="${m.id}" title="Editar placar">✏️ editar</button>`;
+        }
+
+        html += `<div class="match-card ${cardClass}">
+            ${liveHeader}
             <div class="match-teams">
                 <div class="match-team home">
                     ${teamColorPill(homeTeam, 14)}
                     <span class="match-team-name ${homeWinner}">${m.mandante}</span>
                 </div>
-                <div class="match-score ${played ? '' : 'pending'}">
+                <div class="match-score ${played || isLive ? '' : 'pending'}">
                     ${played
                         ? `<span>${m.gols_mandante}</span><span class="sep">×</span><span>${m.gols_visitante}</span>${tbBadge}`
-                        : `<span>vs</span>`}
+                        : isLive
+                            ? `<span>${m.gols_mandante || 0}</span><span class="sep">×</span><span>${m.gols_visitante || 0}</span>`
+                            : `<span>vs</span>`}
                 </div>
                 <div class="match-team away">
                     ${teamColorPill(awayTeam, 14)}
                     <span class="match-team-name ${awayWinner}">${m.visitante}</span>
                 </div>
             </div>
-            ${!played ? dateInfo : (matchDate ? `<div class="match-date-info">📅 ${formatDate(matchDate)}</div>` : '')}
-            ${hasPerm('matches.score') ? `<button class="edit-match-btn" data-id="${m.id}" title="Editar placar">✏️ editar</button>` : ''}
+            ${!played && !isLive ? dateInfo : (matchDate ? `<div class="match-date-info">📅 ${formatDate(matchDate)}</div>` : '')}
+            ${actionBtns}
         </div>`;
     });
 
@@ -446,9 +496,24 @@ function renderMatches() {
             btn.addEventListener('click', () => openEditScoreModal(btn.dataset.id));
         });
     }
+    if (hasPerm('matches.live')) {
+        $$('.live-start-btn').forEach(btn => {
+            btn.addEventListener('click', () => startLiveMatch(btn.dataset.id, 'match'));
+        });
+    }
+    if (hasAnyPerm('matches.live', 'matches.score')) {
+        $$('.live-manage-btn').forEach(btn => {
+            btn.addEventListener('click', () => openLiveScoreModal(btn.dataset.id, 'match'));
+        });
+    }
 }
 
 function findCurrentRound() {
+    // First check for rounds with live matches
+    for (let r = 1; r <= state.totalRounds; r++) {
+        const roundMatches = state.matches.filter(m => m.rodada === r);
+        if (roundMatches.some(m => m.ao_vivo)) return r;
+    }
     for (let r = 1; r <= state.totalRounds; r++) {
         const roundMatches = state.matches.filter(m => m.rodada === r);
         if (roundMatches.some(m => m.gols_mandante == null)) return r;
@@ -469,7 +534,7 @@ function renderBracket() {
     const defaultCounts = { playin: 4, quartas: 4, semis: 2, final: 1 };
 
     const finalMatch = state.knockout.find(m => m.fase === 'final');
-    if (finalMatch && finalMatch.gols1 != null && finalMatch.gols2 != null && finalMatch.time1 && finalMatch.time2) {
+    if (finalMatch && finalMatch.gols1 != null && finalMatch.gols2 != null && finalMatch.time1 && finalMatch.time2 && !finalMatch.ao_vivo) {
         let champion = null;
         if (finalMatch.gols1 > finalMatch.gols2) champion = finalMatch.time1;
         else if (finalMatch.gols2 > finalMatch.gols1) champion = finalMatch.time2;
@@ -522,10 +587,21 @@ function renderBracket() {
             btn.addEventListener('click', () => openEditBracketModal(btn.dataset.id));
         });
     }
+    if (hasPerm('bracket.live')) {
+        $$('.live-bracket-start-btn').forEach(btn => {
+            btn.addEventListener('click', () => startLiveMatch(btn.dataset.id, 'bracket'));
+        });
+    }
+    if (hasAnyPerm('bracket.live', 'bracket.score')) {
+        $$('.live-bracket-manage-btn').forEach(btn => {
+            btn.addEventListener('click', () => openLiveScoreModal(btn.dataset.id, 'bracket'));
+        });
+    }
 }
 
 function renderBracketMatch(m) {
-    const played = m.gols1 != null && m.gols2 != null;
+    const isLive = !!m.ao_vivo;
+    const played = m.gols1 != null && m.gols2 != null && !isLive;
     let winner = null;
     if (played && m.time1 && m.time2) {
         if (m.gols1 > m.gols2) winner = 1;
@@ -537,12 +613,22 @@ function renderBracketMatch(m) {
     }
     const t1c = !m.time1 ? 'tbd' : (winner === 1 ? 'winner' : winner === 2 ? 'loser' : '');
     const t2c = !m.time2 ? 'tbd' : (winner === 2 ? 'winner' : winner === 1 ? 'loser' : '');
-    const s1 = played ? String(m.gols1) + (m.pen1 != null ? ` (${m.pen1})` : '') : '';
-    const s2 = played ? String(m.gols2) + (m.pen2 != null ? ` (${m.pen2})` : '') : '';
-    const editBtn = hasPerm('bracket.score') && m.id
-        ? `<button class="edit-bracket-btn" data-id="${m.id}" title="Editar partida">✏️ editar</button>`
-        : '';
-    return `<div class="bracket-match">
+    const s1 = (played || isLive) ? String(m.gols1 ?? 0) + (m.pen1 != null ? ` (${m.pen1})` : '') : '';
+    const s2 = (played || isLive) ? String(m.gols2 ?? 0) + (m.pen2 != null ? ` (${m.pen2})` : '') : '';
+    let editBtn = '';
+    if (isLive && hasAnyPerm('bracket.live', 'bracket.score') && m.id) {
+        editBtn = `<button class="live-bracket-manage-btn btn-live-start" data-id="${m.id}" title="Gerenciar ao vivo"><span class="live-dot live-dot-sm"></span> Gerenciar</button>`;
+    } else {
+        if (!isLive && hasPerm('bracket.live') && m.id && m.time1 && m.time2 && m.gols1 == null) {
+            editBtn = `<button class="live-bracket-start-btn btn-live-start" data-id="${m.id}" title="Iniciar ao vivo">▶ Ao Vivo</button>`;
+        }
+        if (!isLive && hasPerm('bracket.score') && m.id) {
+            editBtn += `<button class="edit-bracket-btn" data-id="${m.id}" title="Editar partida">✏️ editar</button>`;
+        }
+    }
+    const liveHeader = isLive ? `<div class="bracket-live-header"><span class="live-badge"><span class="live-dot live-dot-sm"></span> AO VIVO</span></div>` : '';
+    return `<div class="bracket-match${isLive ? ' live' : ''}">
+        ${liveHeader}
         <div class="bracket-team ${t1c}">
             <span class="bracket-team-name">${m.time1 || 'A definir'}</span>
             <span class="bracket-team-score">${s1}</span>
@@ -612,9 +698,10 @@ function renderNextMatches() {
     const teamMap = {};
     state.teams.forEach(t => { teamMap[t.nome] = t; });
 
-    const now = new Date();
+    // Live matches come first, then upcoming
+    const liveMatches = state.matches.filter(m => m.ao_vivo);
     const upcoming = state.matches
-        .filter(m => m.gols_mandante == null)
+        .filter(m => m.gols_mandante == null && !m.ao_vivo)
         .sort((a, b) => {
             const dateA = getMatchDateForMatch(a);
             const dateB = getMatchDateForMatch(b);
@@ -625,15 +712,32 @@ function renderNextMatches() {
         })
         .slice(0, 3);
 
-    if (upcoming.length === 0) { section.classList.add('hidden'); return; }
+    const combined = [...liveMatches, ...upcoming];
+    if (combined.length === 0) { section.classList.add('hidden'); return; }
     section.classList.remove('hidden');
 
-    list.innerHTML = upcoming.map(m => {
+    list.innerHTML = combined.map(m => {
         const ht = teamMap[m.mandante] || { cor: '#888' };
         const at = teamMap[m.visitante] || { cor: '#888' };
         const matchDate = getMatchDateForMatch(m);
         const dateStr = matchDate ? formatDate(matchDate) : '📅 A definir';
         const roundStr = `Rodada ${m.rodada}`;
+        const isLive = !!m.ao_vivo;
+
+        if (isLive) {
+            return `<div class="next-match-card live">
+                <div class="next-match-meta">
+                    <span class="next-match-round">${roundStr}</span>
+                    <span class="next-match-live-badge"><span class="live-badge"><span class="live-dot live-dot-sm"></span> AO VIVO</span></span>
+                </div>
+                <div class="next-match-teams">
+                    <span class="next-match-team">${teamColorPill(ht, 14)} ${m.mandante}</span>
+                    <span class="next-match-vs" style="font-weight:800;color:var(--text);">${m.gols_mandante || 0} × ${m.gols_visitante || 0}</span>
+                    <span class="next-match-team">${teamColorPill(at, 14)} ${m.visitante}</span>
+                </div>
+            </div>`;
+        }
+
         return `<div class="next-match-card">
             <div class="next-match-meta">
                 <span class="next-match-round">${roundStr}</span>
@@ -776,8 +880,8 @@ function renderAdminPanel() {
         'admin-section-about': 'about.edit',
         'admin-section-rules': 'rules.edit',
         'admin-section-teams': ['teams.add', 'teams.edit', 'teams.delete', 'players.edit'],
-        'admin-section-matches': ['matches.add', 'matches.edit', 'matches.score', 'matches.delete', 'matches.generate'],
-        'admin-section-bracket': ['bracket.init', 'bracket.score'],
+        'admin-section-matches': ['matches.add', 'matches.edit', 'matches.score', 'matches.delete', 'matches.generate', 'matches.live'],
+        'admin-section-bracket': ['bracket.init', 'bracket.score', 'bracket.live'],
         'admin-section-backup': ['backup.export', 'backup.import'],
         'admin-section-users': 'users.manage',
         'admin-section-roles': 'roles.manage',
@@ -837,7 +941,7 @@ function renderAdminPanel() {
         $$('.admin-edit-team').forEach(btn => btn.addEventListener('click', () => openEditTeamModal(btn.dataset.id)));
     }
 
-    if (hasAnyPerm('matches.add', 'matches.edit', 'matches.score', 'matches.delete')) {
+    if (hasAnyPerm('matches.add', 'matches.edit', 'matches.score', 'matches.delete', 'matches.live')) {
         const rounds = [...new Set(state.matches.map(m => m.rodada))].sort((a, b) => a - b);
         let matchesHtml = '';
         rounds.forEach(r => {
@@ -846,14 +950,16 @@ function renderAdminPanel() {
                 .filter(m => m.rodada === r)
                 .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
                 .forEach(m => {
+                    const isLive = !!m.ao_vivo;
                     const score = m.gols_mandante != null ? `${m.gols_mandante} × ${m.gols_visitante}` : 'vs';
+                    const liveBadge = isLive ? ' <span class="live-badge" style="font-size:0.6rem;"><span class="live-dot live-dot-sm"></span> AO VIVO</span>' : '';
                     const matchDate = getMatchDateForMatch(m);
                     const dateStr = matchDate ? `<span class="admin-match-date">📅 ${formatDate(matchDate)}</span>` : '';
                     const editBtn = hasPerm('matches.edit') ? `<button class="btn btn-secondary btn-sm admin-edit-match" data-id="${m.id}" title="Editar partida">✏️</button>` : '';
                     const scoreBtn = hasPerm('matches.score') ? `<button class="btn btn-secondary btn-sm admin-edit-score" data-id="${m.id}" title="Editar placar">⚽</button>` : '';
                     const deleteBtn = hasPerm('matches.delete') ? `<button class="btn btn-danger btn-sm admin-delete-match" data-id="${m.id}">🗑️</button>` : '';
                     matchesHtml += `<div class="admin-list-item">
-                        <span class="admin-item-label">${m.mandante} <em>${score}</em> ${m.visitante} ${dateStr}</span>
+                        <span class="admin-item-label">${m.mandante} <em>${score}</em> ${m.visitante}${liveBadge} ${dateStr}</span>
                         ${editBtn}${scoreBtn}${deleteBtn}
                     </div>`;
                 });
@@ -1220,6 +1326,168 @@ async function saveEditBracket() {
     }
 }
 
+// ─── Live Match (Ao Vivo) ─────────────────────────────────────────────────────
+function bindLivePopovers() {
+    const popoverEl = document.createElement('div');
+    popoverEl.className = 'live-popover';
+    popoverEl.id = 'live-popover';
+    const existing = $('#live-popover');
+    if (existing) existing.remove();
+    document.body.appendChild(popoverEl);
+
+    let hideTimeout = null;
+
+    $$('.standings-live-wrap').forEach(el => {
+        const show = () => {
+            clearTimeout(hideTimeout);
+            const home = el.dataset.liveHome;
+            const away = el.dataset.liveAway;
+            const gh = el.dataset.liveGh;
+            const ga = el.dataset.liveGa;
+            popoverEl.innerHTML = `<div class="live-popover-score"><span class="live-dot live-dot-sm"></span> ${home} <strong>${gh}</strong> <span class="sep">×</span> <strong>${ga}</strong> ${away}</div>`;
+            popoverEl.classList.add('visible');
+            const rect = el.getBoundingClientRect();
+            let top = rect.bottom + window.scrollY + 6;
+            let left = rect.left + window.scrollX - 20;
+            const pw = popoverEl.offsetWidth;
+            if (left + pw > window.innerWidth - 16) left = window.innerWidth - pw - 16;
+            if (left < 8) left = 8;
+            if (top + popoverEl.offsetHeight > window.scrollY + window.innerHeight - 16) {
+                top = rect.top + window.scrollY - popoverEl.offsetHeight - 6;
+            }
+            popoverEl.style.top = `${top}px`;
+            popoverEl.style.left = `${left}px`;
+        };
+        const hide = () => {
+            hideTimeout = setTimeout(() => popoverEl.classList.remove('visible'), 200);
+        };
+
+        // Desktop: hover
+        el.addEventListener('mouseenter', () => { if (!isMobile()) show(); });
+        el.addEventListener('mouseleave', () => { if (!isMobile()) hide(); });
+        // Mobile: click
+        el.addEventListener('click', (e) => {
+            if (!isMobile()) return;
+            e.preventDefault();
+            e.stopPropagation();
+            if (popoverEl.classList.contains('visible')) {
+                popoverEl.classList.remove('visible');
+            } else {
+                show();
+                setTimeout(() => popoverEl.classList.remove('visible'), 3000);
+            }
+        });
+    });
+
+    popoverEl.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+    popoverEl.addEventListener('mouseleave', () => {
+        hideTimeout = setTimeout(() => popoverEl.classList.remove('visible'), 200);
+    });
+}
+
+async function startLiveMatch(matchId, type) {
+    const collectionName = type === 'bracket' ? 'mata_mata' : 'jogos';
+    const goalsHome = type === 'bracket' ? 'gols1' : 'gols_mandante';
+    const goalsAway = type === 'bracket' ? 'gols2' : 'gols_visitante';
+    try {
+        await updateDoc(doc(db, collectionName, matchId), {
+            ao_vivo: true,
+            [goalsHome]: 0,
+            [goalsAway]: 0,
+        });
+        showToast('Jogo ao vivo iniciado!', 'success');
+    } catch (e) {
+        showToast('Erro ao iniciar ao vivo: ' + e.message, 'error');
+    }
+}
+
+function openLiveScoreModal(matchId, type) {
+    let m, homeName, awayName, homeGoals, awayGoals;
+    if (type === 'bracket') {
+        m = state.knockout.find(x => x.id === matchId);
+        if (!m) return;
+        homeName = m.time1;
+        awayName = m.time2;
+        homeGoals = m.gols1 || 0;
+        awayGoals = m.gols2 || 0;
+    } else {
+        m = state.matches.find(x => x.id === matchId);
+        if (!m) return;
+        homeName = m.mandante;
+        awayName = m.visitante;
+        homeGoals = m.gols_mandante || 0;
+        awayGoals = m.gols_visitante || 0;
+    }
+
+    state.editingLiveMatch = m;
+    state.editingLiveType = type;
+
+    $('#live-home-name').textContent = homeName;
+    $('#live-away-name').textContent = awayName;
+    $('#live-home-score').textContent = homeGoals;
+    $('#live-away-score').textContent = awayGoals;
+    $('#live-tiebreak').checked = !!(type === 'match' ? m.tiebreak : false);
+    // Show/hide tiebreak only for group matches
+    $('#live-tiebreak').closest('.tiebreak-row').classList.toggle('hidden', type === 'bracket');
+    $('#live-score-modal').classList.remove('hidden');
+}
+
+function closeLiveScoreModal() {
+    $('#live-score-modal').classList.add('hidden');
+    state.editingLiveMatch = null;
+    state.editingLiveType = null;
+}
+
+async function saveLiveScore() {
+    const m = state.editingLiveMatch;
+    const type = state.editingLiveType;
+    if (!m) return;
+
+    const homeGoals = parseInt($('#live-home-score').textContent) || 0;
+    const awayGoals = parseInt($('#live-away-score').textContent) || 0;
+
+    const collectionName = type === 'bracket' ? 'mata_mata' : 'jogos';
+    const update = type === 'bracket'
+        ? { gols1: homeGoals, gols2: awayGoals }
+        : { gols_mandante: homeGoals, gols_visitante: awayGoals, tiebreak: $('#live-tiebreak').checked };
+
+    try {
+        await updateDoc(doc(db, collectionName, m.id), update);
+        showToast('Placar atualizado!');
+    } catch (e) {
+        showToast('Erro ao salvar: ' + e.message, 'error');
+    }
+}
+
+async function endLiveMatch() {
+    const m = state.editingLiveMatch;
+    const type = state.editingLiveType;
+    if (!m) return;
+
+    if (!confirm('Encerrar este jogo? O placar atual será o placar final.')) return;
+
+    const homeGoals = parseInt($('#live-home-score').textContent) || 0;
+    const awayGoals = parseInt($('#live-away-score').textContent) || 0;
+
+    const collectionName = type === 'bracket' ? 'mata_mata' : 'jogos';
+    const update = type === 'bracket'
+        ? { ao_vivo: false, gols1: homeGoals, gols2: awayGoals }
+        : { ao_vivo: false, gols_mandante: homeGoals, gols_visitante: awayGoals, tiebreak: $('#live-tiebreak').checked };
+
+    try {
+        await updateDoc(doc(db, collectionName, m.id), update);
+        closeLiveScoreModal();
+        showToast('Jogo encerrado! Placar final salvo.', 'success');
+        // Auto-advance bracket if needed
+        if (type === 'bracket') {
+            if (m.fase === 'playin') await reseedQuartasFromPlayIn();
+            if (m.fase === 'quartas' || m.fase === 'semis') await advanceWinners(m.fase);
+        }
+    } catch (e) {
+        showToast('Erro ao encerrar jogo: ' + e.message, 'error');
+    }
+}
+
 // ─── Export / Import ──────────────────────────────────────────────────────────
 function exportData() {
     const data = {
@@ -1429,10 +1697,10 @@ async function loadRolesAndUsers() {
         if (state.roles.length === 0) {
             const allPerms = ALL_PERMISSIONS.map(p => p.key);
             await setDoc(doc(db, 'roles', 'admin'), { nome: 'Administrador', permissoes: allPerms });
-            await setDoc(doc(db, 'roles', 'arbitro'), { nome: 'Árbitro', permissoes: ['matches.score', 'bracket.score'] });
+            await setDoc(doc(db, 'roles', 'arbitro'), { nome: 'Árbitro', permissoes: ['matches.score', 'matches.live', 'bracket.score', 'bracket.live'] });
             state.roles = [
                 { id: 'admin', nome: 'Administrador', permissoes: allPerms },
-                { id: 'arbitro', nome: 'Árbitro', permissoes: ['matches.score', 'bracket.score'] },
+                { id: 'arbitro', nome: 'Árbitro', permissoes: ['matches.score', 'matches.live', 'bracket.score', 'bracket.live'] },
             ];
         }
         if (state.usuarios.length === 0) {
@@ -1849,6 +2117,7 @@ async function reseedQuartasFromPlayIn() {
 }
 
 function getMatchWinner(m) {
+    if (m.ao_vivo) return null; // live matches have no winner yet
     if (m.gols1 == null || m.gols2 == null) return null;
     if (m.gols1 > m.gols2) return m.time1;
     if (m.gols2 > m.gols1) return m.time2;
@@ -2095,6 +2364,28 @@ function init() {
     $('#edit-bracket-cancel').addEventListener('click', closeEditBracketModal);
     $('#edit-bracket-modal').querySelector('.modal-overlay').addEventListener('click', closeEditBracketModal);
 
+    // Live score modal
+    $('#live-score-save').addEventListener('click', saveLiveScore);
+    $('#live-score-end').addEventListener('click', endLiveMatch);
+    $('#live-score-cancel').addEventListener('click', closeLiveScoreModal);
+    $('#live-score-modal').querySelector('.modal-overlay').addEventListener('click', closeLiveScoreModal);
+    $('#live-home-plus').addEventListener('click', () => {
+        const el = $('#live-home-score');
+        el.textContent = parseInt(el.textContent) + 1;
+    });
+    $('#live-home-minus').addEventListener('click', () => {
+        const el = $('#live-home-score');
+        el.textContent = Math.max(0, parseInt(el.textContent) - 1);
+    });
+    $('#live-away-plus').addEventListener('click', () => {
+        const el = $('#live-away-score');
+        el.textContent = parseInt(el.textContent) + 1;
+    });
+    $('#live-away-minus').addEventListener('click', () => {
+        const el = $('#live-away-score');
+        el.textContent = Math.max(0, parseInt(el.textContent) - 1);
+    });
+
     $('#edit-players-save').addEventListener('click', savePlayersModal);
     $('#edit-players-cancel').addEventListener('click', closeEditPlayersModal);
     $('#edit-players-modal').querySelector('.modal-overlay').addEventListener('click', closeEditPlayersModal);
@@ -2205,7 +2496,7 @@ function init() {
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
             closeLoginModal(); closeEditScoreModal(); closeEditBracketModal();
-            closeEditPlayersModal(); closeEditRoleModal();
+            closeEditPlayersModal(); closeEditRoleModal(); closeLiveScoreModal();
             $('#team-card-modal').classList.add('hidden');
             $('#team-popover').classList.add('hidden');
         }

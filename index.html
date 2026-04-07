@@ -210,6 +210,47 @@
         </div>
     </div>
 
+    <!-- Live Score Modal -->
+    <div id="live-score-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content" style="max-width:420px">
+            <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:0.5rem;">
+                <span class="live-dot"></span>
+                <h2 style="margin:0;">AO VIVO</h2>
+            </div>
+            <div class="live-score-panel">
+                <div class="live-score-team">
+                    <span id="live-home-name" class="live-score-team-name"></span>
+                    <div class="live-score-controls">
+                        <button class="live-score-btn btn-minus" id="live-home-minus">−</button>
+                        <span class="live-score-value" id="live-home-score">0</span>
+                        <button class="live-score-btn" id="live-home-plus">+</button>
+                    </div>
+                </div>
+                <span class="live-score-sep">×</span>
+                <div class="live-score-team">
+                    <span id="live-away-name" class="live-score-team-name"></span>
+                    <div class="live-score-controls">
+                        <button class="live-score-btn btn-minus" id="live-away-minus">−</button>
+                        <span class="live-score-value" id="live-away-score">0</span>
+                        <button class="live-score-btn" id="live-away-plus">+</button>
+                    </div>
+                </div>
+            </div>
+            <div class="tiebreak-row">
+                <label class="tiebreak-label">
+                    <input type="checkbox" id="live-tiebreak">
+                    <span>Decidido no tiebreak</span>
+                </label>
+            </div>
+            <div class="modal-actions" style="flex-wrap:wrap;">
+                <button id="live-score-save" class="btn btn-primary">Salvar Placar</button>
+                <button id="live-score-end" class="btn-live-end">⏹ Encerrar Jogo</button>
+                <button id="live-score-cancel" class="btn btn-secondary">Fechar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- View Team Card Modal (Mobile) -->
     <div id="team-card-modal" class="modal hidden">
         <div class="modal-overlay"></div>
