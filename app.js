@@ -4,6 +4,14 @@
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').catch(() => {});
+        // Unregister legacy firebase-messaging SW to prevent duplicate notifications
+        navigator.serviceWorker.getRegistrations().then(regs => {
+            for (const r of regs) {
+                if (r.active && r.active.scriptURL.includes('firebase-messaging-sw')) {
+                    r.unregister();
+                }
+            }
+        });
     });
 }
 
