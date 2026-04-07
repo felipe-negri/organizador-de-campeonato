@@ -28,11 +28,6 @@ async function sendToAll(title, body, tag) {
 
   const message = {
     data: { title, body, tag },
-    webpush: {
-      fcmOptions: {
-        link: '/',
-      },
-    },
   };
 
   // Send in batches of 500 (FCM limit)
@@ -77,13 +72,13 @@ exports.onJogoUpdate = onDocumentUpdated('jogos/{jogoId}', async (event) => {
 
   if (started) {
     await sendToAll(
-      '🔴🔴 Jogo Ao Vivo!',
+      '🔴Jogo Ao Vivo!🔴',
       `${mand} vs ${visit} começou agora! 🏐🔥`,
       `live-start-${event.params.jogoId}`
     );
   } else {
     await sendToAll(
-      '🏁🏁 Resultado Final',
+      '🏁Resultado Final🏁',
       `${mand} ${after.gols_mandante ?? 0} × ${after.gols_visitante ?? 0} ${visit} ⚽🏆`,
       `result-${event.params.jogoId}`
     );
@@ -107,13 +102,13 @@ exports.onMataMataUpdate = onDocumentUpdated('mata_mata/{matchId}', async (event
 
   if (started) {
     await sendToAll(
-      '🔴🔴 Mata-Mata Ao Vivo!',
+      '🔴Mata-Mata Ao Vivo!🔴',
       `${mand} vs ${visit} começou agora! 🏐🔥`,
       `live-start-${event.params.matchId}`
     );
   } else {
     await sendToAll(
-      '🏁🏁 Resultado Final (Mata-Mata)',
+      '🏁Resultado Final (Mata-Mata)🏁',
       `${mand} ${after.gols_mandante ?? 0} × ${after.gols_visitante ?? 0} ${visit} ⚽🏆`,
       `result-${event.params.matchId}`
     );
