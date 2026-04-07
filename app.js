@@ -1550,23 +1550,32 @@ function showGoalToast(msg, type = 'goal') {
 // ─── Push Notifications ───────────────────────────────────────────────────────
 async function requestNotificationPermission() {
     if (!('Notification' in window)) {
-        showToast('Seu navegador não suporta notificações.', 'error');
+        showToast('Seu navegador não suporta notificações. Tente adicionar o site à tela inicial.', 'error');
         return;
     }
-    if (Notification.permission === 'granted') {
+    const perm = Notification.permission;
+    if (perm === 'granted') {
         showToast('Notificações de resultados já ativadas! ✅');
-        return;
-    }
-    if (Notification.permission === 'denied') {
-        showToast('Notificações foram bloqueadas. Libere nas configurações do navegador.', 'error');
-        return;
-    }
-    const result = await Notification.requestPermission();
-    if (result === 'granted') {
-        showToast('Pronto! Você receberá os resultados dos jogos. 🏁');
         await savePushToken();
-    } else {
-        showToast('Notificações não foram permitidas.', 'info');
+        return;
+    }
+    if (perm === 'denied') {
+        showToast('Notificações foram bloqueadas. Vá em Configurações do site no navegador para desbloquear.', 'error');
+        return;
+    }
+    try {
+        const result = await Notification.requestPermission();
+        if (result === 'granted') {
+            showToast('Pronto! Você receberá os resultados dos jogos. 🏁');
+            await savePushToken();
+        } else if (result === 'denied') {
+            showToast('Permissão negada. Você pode reativar nas configurações do navegador.', 'info');
+        } else {
+            showToast('Permissão de notificação não foi concedida.', 'info');
+        }
+    } catch (e) {
+        console.error('Notification permission error:', e);
+        showToast('Erro ao solicitar notificações: ' + e.message, 'error');
     }
 }
 
@@ -2442,11 +2451,19 @@ function init() {
     $('#theme-toggle').addEventListener('click', () => applyTheme(state.theme === 'dark' ? 'light' : 'dark'));
 
     // Notification bell
-    $('#notification-toggle').addEventListener('click', async () => {
-        await requestNotificationPermission();
+    const notifBtn = $('#notification-toggle');
+    if (notifBtn) {
+        notifBtn.addEventListener('click', async () => {
+            try {
+                await requestNotificationPermission();
+            } catch (e) {
+                console.error('Notification error:', e);
+                showToast('Erro ao solicitar permissão de notificação.', 'error');
+            }
+            updateNotificationBtnState();
+        });
         updateNotificationBtnState();
-    });
-    updateNotificationBtnState();
+    }
 
     $$('.nav-tab').forEach(tab => tab.addEventListener('click', () => showTab(tab.dataset.tab)));
 

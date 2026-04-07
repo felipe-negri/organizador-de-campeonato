@@ -2,7 +2,7 @@
   "name": "campeonato-functions",
   "description": "Cloud Functions for push notifications on live match events",
   "engines": {
-    "node": "18"
+    "node": "22"
   },
   "main": "index.js",
   "dependencies": {
