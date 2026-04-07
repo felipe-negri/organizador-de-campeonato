@@ -13,17 +13,5 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Handle background push messages
-messaging.onBackgroundMessage((payload) => {
-  const data = payload.data || payload.notification || {};
-  const title = data.title || '⚽ Campeonato';
-  const options = {
-    body: data.body || 'Atualização do campeonato!',
-    icon: './logo-sem-fundo.png',
-    badge: './logo-sem-fundo.png',
-    vibrate: [200, 100, 200],
-    tag: data.tag || 'campeonato',
-    renotify: true,
-  };
-  return self.registration.showNotification(title, options);
-});
+// sw.js already handles push display — this just suppresses the FCM default
+messaging.onBackgroundMessage(() => {});
