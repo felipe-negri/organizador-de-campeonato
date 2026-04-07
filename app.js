@@ -1581,9 +1581,11 @@ async function requestNotificationPermission() {
     try {
         const result = perm === 'granted' ? 'granted' : await Notification.requestPermission();
         if (result === 'granted') {
-            await savePushToken();
-            localStorage.setItem('push_opted_in', '1');
-            showToast('Pronto! Você receberá os resultados dos jogos. 🏁');
+            const saved = await savePushToken();
+            if (saved) {
+                localStorage.setItem('push_opted_in', '1');
+                showToast('Pronto! Você receberá os resultados dos jogos. 🏁');
+            }
         } else if (result === 'denied') {
             showToast('Permissão negada. Você pode reativar nas configurações do navegador.', 'info');
         } else {
@@ -1611,13 +1613,16 @@ async function savePushToken() {
             });
             localStorage.setItem('fcm_token', token);
             console.log('Push token saved:', token.substring(0, 20) + '...');
+            return true;
         } else {
             console.warn('No FCM token received.');
             showToast('Não foi possível registrar push. Tente novamente.', 'info');
+            return false;
         }
     } catch (e) {
         console.error('FCM error:', e);
         showToast('Erro ao registrar push: ' + e.message, 'error');
+        return false;
     }
 }
 
