@@ -126,9 +126,10 @@
         .corner-wrap { width: 300px; }
 
         .corner-panel {
-            background: rgba(10,10,14,0.92);
+            background: #0d1117;
             border-radius: 8px;
             overflow: hidden;
+            border: 1px solid #21262d;
             box-shadow: 0 4px 28px rgba(0,0,0,0.7);
         }
 
@@ -138,7 +139,7 @@
             grid-template-columns: 28px 1fr 56px 24px 32px;
             align-items: center;
             padding: 7px 10px;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
+            border-bottom: 1px solid #21262d;
             gap: 4px;
         }
 
@@ -147,11 +148,11 @@
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: rgba(255,255,255,0.3);
+            color: #8b949e;
             text-align: center;
         }
 
-        .c-th.left { text-align: left; padding-left: 14px; }
+        .c-th.left  { text-align: left; padding-left: 10px; }
         .c-th.right { text-align: right; }
 
         /* linha de dados */
@@ -162,79 +163,59 @@
             padding: 0 10px;
             gap: 4px;
             height: 30px;
-            border-top: 1px solid rgba(255,255,255,0.03);
+            border-bottom: 1px solid #21262d;
         }
 
-        .c-row.zone-q  { background: rgba(72,187,120,0.07); }
-        .c-row.zone-pi { background: rgba(246,173,85,0.05); }
-        .c-row.highlighted { background: rgba(255,255,255,0.07); }
+        /* zonas — mesmos valores do app */
+        .c-row.zone-q        { background: rgba(63,185,80,0.08); }
+        .c-row.zone-q-border { border-bottom: 2px solid rgba(63,185,80,0.4); }
+        .c-row.zone-pi       { background: rgba(210,153,34,0.08); }
+        .c-row.zone-pi-border{ border-bottom: 2px solid rgba(210,153,34,0.4); }
+        .c-row.zone-out      { background: rgba(248,81,73,0.06); }
 
-        .c-pos {
-            font-size: 11px;
-            font-weight: 700;
-            color: rgba(255,255,255,0.35);
-            text-align: center;
-        }
+        /* posição colorida por zona */
+        .c-pos          { font-size:11px; font-weight:700; color:#8b949e; text-align:center; }
+        .c-pos.q        { color: #3fb950; }
+        .c-pos.pi       { color: #d29922; }
+        .c-pos.out      { color: #f85149; }
 
-        /* bandeirinha + nome */
+        /* pill + nome */
         .c-team {
             display: flex;
             align-items: center;
-            gap: 6px;
             overflow: hidden;
-        }
-
-        .c-flag {
-            width: 3px;
-            height: 16px;
-            border-radius: 1.5px;
-            flex-shrink: 0;
         }
 
         .c-name {
             font-size: 11px;
-            font-weight: 700;
+            font-weight: 600;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            color: #e6edf3;
         }
 
-        /* barrinhas de histórico de resultados */
-        .c-status {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 2px;
-        }
+        .c-row.zone-out .c-name { opacity: 0.6; }
 
-        .c-bar {
-            width: 8px;
-            height: 12px;
-            border-radius: 2px;
-        }
+        /* barrinhas de histórico */
+        .c-status { display:flex; align-items:center; justify-content:center; gap:2px; }
+        .c-bar    { width:8px; height:12px; border-radius:2px; }
 
-        .c-num {
-            font-size: 11px;
-            font-weight: 700;
-            text-align: center;
-            color: rgba(255,255,255,0.55);
-        }
+        /* vitórias */
+        .c-num { font-size:11px; font-weight:700; text-align:center; color:#8b949e; }
 
-        .c-pts-val {
-            font-size: 12px;
-            font-weight: 900;
-            text-align: right;
-        }
+        /* pontos — azul primário do app */
+        .c-pts-val { font-size:12px; font-weight:800; text-align:right; color:#58a6ff; }
 
         /* rodapé */
         .panel-footer {
             padding: 8px 10px;
-            border-top: 1px solid rgba(255,255,255,0.07);
+            border-top: 1px solid #21262d;
             font-size: 10px;
             font-weight: 800;
             letter-spacing: 2.5px;
             text-transform: uppercase;
-            color: rgba(255,255,255,0.3);
+            color: #8b949e;
         }
 
         /* ══════════════════════════════════════════════
@@ -554,7 +535,28 @@
                 name:  name  || '—',
                 abbr:  t?.sigla || name?.slice(0,3).toUpperCase() || '?',
                 color: t?.cor  || t?.cores?.[0] || '#555',
+                cores: t?.cores || (t?.cor ? [t.cor] : ['#555']),
             };
+        }
+
+        /* SVG pill idêntico ao app (teamColorPill) */
+        function colorPill(cores, height = 16) {
+            const w = 4, n = cores.length, chamfer = 2;
+            let segs = '';
+            if (n === 1) {
+                segs = `<rect x="0" y="0" width="${w}" height="${height}" fill="${cores[0]}"/>`;
+            } else {
+                const segH = height / n;
+                cores.forEach((c, i) => {
+                    const y0 = i * segH, y1 = (i + 1) * segH;
+                    const tlY = i === 0 ? y0 : y0 + chamfer;
+                    const trY = i === 0 ? y0 : y0 - chamfer;
+                    const blY = i === n-1 ? y1 : y1 + chamfer;
+                    const brY = i === n-1 ? y1 : y1 - chamfer;
+                    segs += `<polygon points="0,${tlY} ${w},${trY} ${w},${brY} 0,${blY}" fill="${c}"/>`;
+                });
+            }
+            return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${height}" style="border-radius:2px;vertical-align:middle;flex-shrink:0;margin-right:6px;overflow:hidden">${segs}</svg>`;
         }
 
         function hex2rgba(hex, a) {
@@ -588,6 +590,7 @@
                     name: t.nome,
                     abbr: t.sigla || t.nome?.slice(0,3).toUpperCase() || '?',
                     color: t.cor || t.cores?.[0] || '#555',
+                    cores: t.cores || (t.cor ? [t.cor] : ['#555']),
                     pts:0, played:0, wins:0, draws:0, losses:0,
                     tbWins:0, tbLosses:0, gf:0, ga:0,
                 };
@@ -691,31 +694,39 @@
 
         function cornerStandings(classif) {
             const list = calcStandings().slice(0, MAX_ROWS);
-            if (!list.length) return `<div style="padding:14px;text-align:center;font-size:11px;color:rgba(255,255,255,0.2)">Sem dados</div>`;
+            if (!list.length) return `<div style="padding:14px;text-align:center;font-size:11px;color:#8b949e">Sem dados</div>`;
             return list.map((t, i) => {
-                const zone = i < classif ? 'zone-q' : (i < 12 ? 'zone-pi' : '');
+                const isQ  = i < classif;
+                const isPi = !isQ && i < 12;
+                const isOut= !isQ && !isPi;
+                const isQBorder  = i === classif - 1;
+                const isPiBorder = i === 11;
+
+                const zoneClass = isQ ? 'zone-q' : isPi ? 'zone-pi' : 'zone-out';
+                const borderClass = isQBorder ? 'zone-q-border' : isPiBorder ? 'zone-pi-border' : '';
+                const posClass = isQ ? 'q' : isPi ? 'pi' : 'out';
+
                 const results = recentResults(t.name);
-                /* preenche com barras vazias até ter 5 */
                 const bars = Array(5).fill(null).map((_, j) => {
                     const r = results[j];
                     let bg;
-                    if (!r)      bg = 'rgba(255,255,255,0.06)';
+                    if      (!r)       bg = '#21262d';
                     else if (r === 'W') bg = t.color;
-                    else if (r === 'D') bg = 'rgba(255,255,255,0.3)';
-                    else                bg = 'rgba(255,255,255,0.1)';
+                    else if (r === 'D') bg = '#8b949e';
+                    else                bg = '#30363d';
                     return `<div class="c-bar" style="background:${bg}"></div>`;
                 }).join('');
 
                 return `
-                    <div class="c-row ${zone}">
-                        <div class="c-pos">${i+1}</div>
+                    <div class="c-row ${zoneClass} ${borderClass}">
+                        <div class="c-pos ${posClass}">${i+1}</div>
                         <div class="c-team">
-                            <div class="c-flag" style="background:${t.color}"></div>
+                            ${colorPill(t.cores, 16)}
                             <span class="c-name">${t.name}</span>
                         </div>
                         <div class="c-status">${bars}</div>
                         <div class="c-num">${t.wins}</div>
-                        <div class="c-pts-val" style="color:${t.color}">${t.pts}</div>
+                        <div class="c-pts-val">${t.pts}</div>
                     </div>
                 `;
             }).join('');
