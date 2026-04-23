@@ -14,357 +14,489 @@
             overflow: hidden;
         }
 
-        /* ─────────────────────────────────────────
-           MODO MINI  (mode=mini, padrão)
-           Tamanho recomendado no OBS: 1920 × 110
-        ───────────────────────────────────────── */
-        body.mode-mini {
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            padding: 8px 16px;
-        }
-
-        .mini-container {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            background: rgba(0, 0, 0, 0.78);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            padding: 10px 20px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            width: 100%;
-            min-height: 64px;
-        }
-
-        /* Placar mini */
-        .mini-scoreboard {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex: 0 0 auto;
-        }
-
-        .live-badge {
-            background: #c53030;
-            color: #fff;
-            font-size: 10px;
-            font-weight: 800;
-            padding: 3px 8px;
-            border-radius: 4px;
-            letter-spacing: 1px;
-            animation: blink 1.6s infinite;
-            white-space: nowrap;
-        }
-
         @keyframes blink {
             0%, 100% { opacity: 1; }
-            50%       { opacity: 0.45; }
+            50%       { opacity: 0.35; }
         }
 
-        .mini-team {
-            font-size: 15px;
-            font-weight: 700;
-            white-space: nowrap;
-            max-width: 160px;
+        /* ══════════════════════════════════════════════
+           MODO MINI  ?mode=mini
+           Só o placar ao vivo.
+           Tamanho OBS sugerido: 600 × 80
+        ══════════════════════════════════════════════ */
+        body.mode-mini {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .mini-wrap {
+            display: flex;
+            align-items: stretch;
+            border-radius: 12px;
             overflow: hidden;
-            text-overflow: ellipsis;
+            box-shadow: 0 4px 30px rgba(0,0,0,0.6);
+            min-width: 420px;
+            height: 72px;
         }
 
-        .mini-score {
-            font-size: 22px;
-            font-weight: 900;
-            background: rgba(255, 255, 255, 0.12);
-            padding: 2px 14px;
-            border-radius: 6px;
-            letter-spacing: 2px;
-        }
-
-        .sep {
-            width: 1px;
-            height: 44px;
-            background: rgba(255, 255, 255, 0.15);
-            flex-shrink: 0;
-        }
-
-        /* Tabela mini */
-        .mini-table-section {
+        .mini-side {
             flex: 1;
-            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 18px;
+            font-size: 16px;
+            font-weight: 800;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.5);
         }
 
-        .mini-table-label {
-            font-size: 10px;
-            color: rgba(255, 255, 255, 0.45);
-            text-transform: uppercase;
+        .mini-side.home { justify-content: flex-end; }
+        .mini-side.away { justify-content: flex-start; }
+
+        .mini-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.85);
+            padding: 0 20px;
+            flex-shrink: 0;
+            gap: 4px;
+        }
+
+        .mini-score-digits {
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: 3px;
+            line-height: 1;
+        }
+
+        .live-dot {
+            font-size: 9px;
+            font-weight: 700;
+            color: #fc8181;
             letter-spacing: 1.5px;
-            margin-bottom: 5px;
+            text-transform: uppercase;
+            animation: blink 1.5s infinite;
         }
 
-        .mini-rows {
-            display: flex;
-            gap: 18px;
-            flex-wrap: nowrap;
-        }
-
-        .mini-row {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 12px;
-            white-space: nowrap;
-        }
-
-        .mini-pos  { color: rgba(255,255,255,0.35); width: 14px; text-align: right; font-weight: 600; }
-        .mini-abbr { font-weight: 700; }
-        .mini-pts  { color: #68d391; font-weight: 800; font-size: 13px; }
-
-        .mini-bracket-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-
-        .mini-bracket-score { color: #f6ad55; font-weight: 800; }
-
-        .no-live {
-            color: rgba(255, 255, 255, 0.3);
+        .mini-no-live {
+            background: rgba(0,0,0,0.7);
+            border-radius: 12px;
+            padding: 16px 28px;
             font-size: 13px;
+            color: rgba(255,255,255,0.3);
             font-style: italic;
         }
 
-        /* ─────────────────────────────────────────
-           MODO FULL  (mode=full)
-           Tamanho recomendado no OBS: 1920 × 1080
-        ───────────────────────────────────────── */
-        body.mode-full {
+        /* ══════════════════════════════════════════════
+           MODO CORNER  ?mode=corner
+           Placar compacto + classificação resumida, num canto.
+           Tamanho OBS sugerido: 340 × 560
+        ══════════════════════════════════════════════ */
+        body.mode-corner {
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
             width: 100vw;
             height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            padding: 14px;
         }
 
-        .full-container {
-            width: min(860px, 90vw);
+        .corner-wrap {
+            width: 312px;
             display: flex;
             flex-direction: column;
-            gap: 18px;
-        }
-
-        .full-champ-name {
-            text-align: center;
-            font-size: 16px;
-            font-weight: 700;
-            letter-spacing: 4px;
-            text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.55);
-        }
-
-        /* Placar full */
-        .full-scoreboard {
-            background: rgba(0, 0, 0, 0.82);
-            backdrop-filter: blur(12px);
-            border-radius: 18px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 28px 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 28px;
-            min-height: 140px;
-        }
-
-        .full-team {
-            font-size: 30px;
-            font-weight: 800;
-            text-align: center;
-            flex: 1;
-            line-height: 1.2;
-        }
-
-        .full-team.right { text-align: right; }
-
-        .full-score-center {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            flex-shrink: 0;
-        }
-
-        .full-score-line {
-            display: flex;
-            align-items: center;
             gap: 10px;
         }
 
-        .full-score-num {
-            font-size: 72px;
+        /* placar corner */
+        .corner-score {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 20px rgba(0,0,0,0.5);
+        }
+
+        .corner-score-teams {
+            display: flex;
+            height: 58px;
+        }
+
+        .corner-score-side {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 10px;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+
+        .corner-score-abbr {
+            font-size: 18px;
             font-weight: 900;
             line-height: 1;
         }
 
-        .full-score-x {
-            font-size: 40px;
-            font-weight: 300;
-            color: rgba(255, 255, 255, 0.35);
-        }
-
-        .full-live-badge {
-            background: #c53030;
-            font-size: 12px;
-            font-weight: 800;
-            padding: 4px 14px;
-            border-radius: 6px;
-            letter-spacing: 2px;
-            animation: blink 1.6s infinite;
-        }
-
-        .full-pen {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.45);
-        }
-
-        .full-awaiting {
-            text-align: center;
-            color: rgba(255, 255, 255, 0.25);
-            font-size: 15px;
-            font-style: italic;
-            padding: 40px;
-        }
-
-        /* Tabela full */
-        .full-table-wrap {
-            background: rgba(0, 0, 0, 0.78);
-            backdrop-filter: blur(12px);
-            border-radius: 18px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            overflow: hidden;
-        }
-
-        .full-table-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 13px 22px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-        }
-
-        .full-table-title {
-            font-size: 13px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .full-table-hint {
-            font-size: 10px;
-            color: rgba(255, 255, 255, 0.25);
-        }
-
-        /* Standings table */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13.5px;
-        }
-
-        thead th {
-            padding: 9px 14px;
-            text-align: center;
-            font-size: 10px;
-            font-weight: 700;
-            color: rgba(255, 255, 255, 0.4);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        thead th.left { text-align: left; }
-
-        tbody tr { border-top: 1px solid rgba(255, 255, 255, 0.04); }
-
-        tbody tr.zone-q  { background: rgba(72, 187, 120, 0.08); }
-        tbody tr.zone-pi { background: rgba(246, 173, 85, 0.06); }
-
-        tbody td {
-            padding: 8px 14px;
-            text-align: center;
-        }
-
-        tbody td.left  { text-align: left; font-weight: 600; }
-        tbody td.muted { color: rgba(255, 255, 255, 0.4); }
-        tbody td.pts   { color: #68d391; font-weight: 800; font-size: 15px; }
-
-        /* Bracket full */
-        .bracket-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 18px; }
-
-        .bracket-phase-title {
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: rgba(255, 255, 255, 0.4);
-            margin-bottom: 8px;
-        }
-
-        .bracket-grid {
-            display: grid;
-            gap: 7px;
-        }
-
-        .bracket-match {
-            display: flex;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            overflow: hidden;
-            font-size: 13px;
-        }
-
-        .b-team {
-            flex: 1;
-            padding: 7px 12px;
+        .corner-score-name {
+            font-size: 9px;
             font-weight: 600;
+            opacity: 0.75;
+            margin-top: 2px;
+            max-width: 100%;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
-        .b-team.right { text-align: right; }
-        .b-team.winner { color: #68d391; }
+        .corner-score-mid {
+            background: rgba(0,0,0,0.88);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0 12px;
+            flex-shrink: 0;
+            gap: 3px;
+        }
 
-        .b-score {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 7px 14px;
+        .corner-score-nums {
+            font-size: 26px;
             font-weight: 900;
-            font-size: 15px;
-            min-width: 56px;
+            letter-spacing: 2px;
+            line-height: 1;
+        }
+
+        .corner-live-dot {
+            font-size: 8px;
+            font-weight: 700;
+            color: #fc8181;
+            letter-spacing: 1px;
+            animation: blink 1.5s infinite;
+        }
+
+        .corner-score-footer {
+            background: rgba(0,0,0,0.65);
             text-align: center;
+            font-size: 9px;
+            color: rgba(255,255,255,0.35);
+            padding: 4px;
+        }
+
+        /* tabela corner */
+        .corner-table-wrap {
+            background: rgba(0,0,0,0.72);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .corner-table-header {
+            padding: 8px 12px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.4);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .corner-row {
+            display: flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-top: 1px solid rgba(255,255,255,0.04);
+            gap: 8px;
+        }
+
+        .corner-row.zone-q  { background: rgba(72,187,120,0.07); }
+        .corner-row.zone-pi { background: rgba(246,173,85,0.05); }
+
+        .c-swatch {
+            width: 3px;
+            height: 22px;
+            border-radius: 2px;
             flex-shrink: 0;
         }
 
-        /* Fade transition when switching table view */
-        .fade-out { animation: fadeOut 0.3s ease forwards; }
-        .fade-in  { animation: fadeIn  0.4s ease forwards; }
+        .c-pos {
+            font-size: 10px;
+            color: rgba(255,255,255,0.3);
+            width: 14px;
+            text-align: right;
+            flex-shrink: 0;
+        }
 
-        @keyframes fadeOut { to { opacity: 0; } }
-        @keyframes fadeIn  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .c-abbr {
+            font-size: 12px;
+            font-weight: 800;
+            flex: 1;
+        }
+
+        .c-pts {
+            font-size: 13px;
+            font-weight: 900;
+        }
+
+        .c-pj {
+            font-size: 10px;
+            color: rgba(255,255,255,0.35);
+            width: 20px;
+            text-align: right;
+        }
+
+        /* ══════════════════════════════════════════════
+           MODO FULL  ?mode=full
+           Placar grande + tabela completa centralizado.
+           Tamanho OBS sugerido: 900 × 700 (ou 1920×1080)
+        ══════════════════════════════════════════════ */
+        body.mode-full {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .full-wrap {
+            width: min(880px, 96vw);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .full-champ-label {
+            text-align: center;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.35);
+        }
+
+        /* placar full */
+        .full-scoreboard {
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 6px 40px rgba(0,0,0,0.6);
+            display: flex;
+            height: 150px;
+        }
+
+        .full-team-side {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            padding: 0 32px;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.5);
+        }
+
+        .full-team-side.home { justify-content: flex-end; }
+        .full-team-side.away { justify-content: flex-start; }
+
+        .full-team-info {
+            display: flex;
+            flex-direction: column;
+            align-items: inherit;
+            gap: 4px;
+        }
+
+        .full-team-abbr {
+            font-size: 36px;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .full-team-name {
+            font-size: 13px;
+            font-weight: 600;
+            opacity: 0.75;
+        }
+
+        .full-score-mid {
+            background: rgba(0,0,0,0.82);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0 36px;
+            flex-shrink: 0;
+            gap: 6px;
+        }
+
+        .full-score-nums {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .full-score-n {
+            font-size: 68px;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .full-score-sep {
+            font-size: 36px;
+            font-weight: 300;
+            color: rgba(255,255,255,0.3);
+        }
+
+        .full-live-badge {
+            background: #c53030;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 3px 12px;
+            border-radius: 5px;
+            letter-spacing: 2px;
+            animation: blink 1.5s infinite;
+        }
+
+        .full-pen-info {
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+        }
+
+        .full-awaiting {
+            background: rgba(0,0,0,0.7);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 110px;
+            color: rgba(255,255,255,0.2);
+            font-size: 14px;
+            font-style: italic;
+        }
+
+        /* tabela full */
+        .full-table-wrap {
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(12px);
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .full-table-header {
+            padding: 11px 18px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2.5px;
+            color: rgba(255,255,255,0.4);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        thead th {
+            padding: 8px 12px;
+            text-align: center;
+            font-size: 9px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        thead th.tleft { text-align: left; }
+
+        tbody tr { border-top: 1px solid rgba(255,255,255,0.04); }
+        tbody tr.zone-q  { background: rgba(72,187,120,0.07); }
+        tbody tr.zone-pi { background: rgba(246,173,85,0.05); }
+
+        tbody td {
+            padding: 7px 12px;
+            text-align: center;
+        }
+
+        tbody td.tleft { text-align: left; }
+        tbody td.muted { color: rgba(255,255,255,0.35); }
+
+        .t-swatch {
+            display: inline-block;
+            width: 3px;
+            height: 16px;
+            border-radius: 2px;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        .t-name { font-weight: 700; vertical-align: middle; }
+        .t-pts  { font-weight: 900; font-size: 15px; }
+
+        /* bracket full */
+        .bracket-wrap { padding: 16px 18px; display: flex; flex-direction: column; gap: 16px; }
+
+        .bracket-phase-label {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.35);
+            margin-bottom: 7px;
+        }
+
+        .bracket-grid { display: grid; gap: 6px; }
+
+        .bm {
+            display: flex;
+            align-items: center;
+            border-radius: 7px;
+            overflow: hidden;
+            font-size: 13px;
+            background: rgba(255,255,255,0.04);
+        }
+
+        .bm-team {
+            flex: 1;
+            padding: 8px 12px;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .bm-team.right { flex-direction: row-reverse; }
+        .bm-team.winner { color: #68d391; }
+
+        .bm-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .bm-score {
+            background: rgba(255,255,255,0.09);
+            padding: 8px 16px;
+            font-weight: 900;
+            font-size: 15px;
+            min-width: 60px;
+            text-align: center;
+            flex-shrink: 0;
+        }
     </style>
 </head>
 <body>
     <div id="app"></div>
 
     <script type="module">
-        import { initializeApp }                    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-        import { getFirestore, collection, doc,
-                 onSnapshot }                        from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+        import { initializeApp }         from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+        import { getFirestore, collection,
+                 doc, onSnapshot }        from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
         /* ── Firebase ── */
         const firebaseConfig = {
@@ -376,37 +508,34 @@
             appId:             '1:574392149055:web:75225d6719270b6b4dc48a',
         };
 
-        const fbApp = initializeApp(firebaseConfig);
-        const db    = getFirestore(fbApp);
+        const db = getFirestore(initializeApp(firebaseConfig));
 
-        /* ── State ── */
-        const params = new URLSearchParams(location.search);
-        const MODE   = params.get('mode') === 'full' ? 'full' : 'mini';
-        const TABLE_INTERVAL_MS = parseInt(params.get('interval') || '8000', 10);
+        /* ── URL params ── */
+        const params   = new URLSearchParams(location.search);
+        const MODE     = params.get('mode') || 'mini';   // mini | corner | full
+        const TABLE    = params.get('table') || 'standings'; // standings | bracket
+        const MAX_ROWS = parseInt(params.get('rows') || '8', 10);
 
         document.body.classList.add('mode-' + MODE);
 
+        /* ── State ── */
         const state = {
-            liveMatch:  null,   // { ...matchData, isBracket: bool }
-            matches:    [],
-            knockout:   [],
-            teams:      [],
-            config:     {},
-            tableView:  'standings', // 'standings' | 'bracket'
-            ready:      { matches: false, knockout: false, teams: false, config: false },
+            liveMatch: null,
+            matches:   [],
+            knockout:  [],
+            teams:     [],
+            config:    {},
         };
 
-        /* ── Realtime listeners ── */
+        /* ── Listeners ── */
         onSnapshot(collection(db, 'jogos'), snap => {
             state.matches = snap.docs
                 .map(d => ({ id: d.id, ...d.data() }))
                 .sort((a, b) => (a.rodada - b.rodada) || ((a.ordem || 0) - (b.ordem || 0)));
 
             const live = state.matches.find(m => m.ao_vivo);
-            if (live) state.liveMatch = { ...live, isBracket: false };
-            else if (!state.liveMatch?.isBracket) state.liveMatch = null;
-
-            state.ready.matches = true;
+            if (live) state.liveMatch = { ...live, _bracket: false };
+            else if (!state.liveMatch?._bracket) state.liveMatch = null;
             render();
         });
 
@@ -417,45 +546,70 @@
                 .sort((a, b) => (order[a.fase] - order[b.fase]) || ((a.ordem || 0) - (b.ordem || 0)));
 
             const live = state.knockout.find(m => m.ao_vivo);
-            if (live) state.liveMatch = { ...live, isBracket: true };
-            else if (state.liveMatch?.isBracket) state.liveMatch = null;
-
-            state.ready.knockout = true;
+            if (live) state.liveMatch = { ...live, _bracket: true };
+            else if (state.liveMatch?._bracket) state.liveMatch = null;
             render();
         });
 
         onSnapshot(collection(db, 'times'), snap => {
             state.teams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            state.ready.teams = true;
             render();
         });
 
         onSnapshot(doc(db, 'config', 'main'), snap => {
             state.config = snap.exists() ? snap.data() : {};
-            state.ready.config = true;
             render();
         });
 
-        /* ── Alternância da tabela ── */
-        setInterval(() => {
-            const app = document.getElementById('app');
-            app.classList.add('fade-out');
-            setTimeout(() => {
-                state.tableView = state.tableView === 'standings' ? 'bracket' : 'standings';
-                render();
-                app.classList.remove('fade-out');
-                app.classList.add('fade-in');
-                setTimeout(() => app.classList.remove('fade-in'), 400);
-            }, 300);
-        }, TABLE_INTERVAL_MS);
+        /* ════════════════════════════════════════
+           HELPERS
+        ════════════════════════════════════════ */
+        function teamInfo(name) {
+            const t = state.teams.find(t => t.nome === name);
+            return {
+                name:  name || '—',
+                abbr:  t?.sigla  || name?.slice(0, 3).toUpperCase() || '?',
+                color: t?.cor    || (t?.cores?.[0]) || '#555',
+                cores: t?.cores  || (t?.cor ? [t.cor] : ['#555']),
+            };
+        }
 
-        /* ── Cálculo de classificação ── */
-        function calculateStandings() {
+        function gradient(cores) {
+            if (!cores || cores.length < 2) return cores?.[0] || '#333';
+            return `linear-gradient(135deg, ${cores.join(', ')})`;
+        }
+
+        function hex2rgba(hex, a = 0.25) {
+            const r = parseInt(hex.slice(1,3), 16);
+            const g = parseInt(hex.slice(3,5), 16);
+            const b = parseInt(hex.slice(5,7), 16);
+            return `rgba(${r},${g},${b},${a})`;
+        }
+
+        function scoreOf(m) {
+            return m._bracket
+                ? { h: m.gols1 ?? 0, a: m.gols2 ?? 0 }
+                : { h: m.gols_mandante ?? 0, a: m.gols_visitante ?? 0 };
+        }
+
+        function namesOf(m) {
+            return m._bracket
+                ? { home: m.time1, away: m.time2 }
+                : { home: m.mandante, away: m.visitante };
+        }
+
+        function phaseName(f) {
+            return { playin: 'Play-In', quartas: 'Quartas de Final', semis: 'Semifinais', final: 'Final' }[f] || f;
+        }
+
+        /* ── Classificação ── */
+        function calcStandings() {
             const stats = {};
             state.teams.forEach(t => {
                 stats[t.nome] = {
                     name: t.nome,
-                    abbr: t.sigla || t.nome?.slice(0, 3).toUpperCase() || '???',
+                    abbr: t.sigla || t.nome?.slice(0,3).toUpperCase() || '?',
+                    color: t.cor || t.cores?.[0] || '#555',
                     pts: 0, played: 0,
                     wins: 0, draws: 0, losses: 0,
                     tbWins: 0, tbLosses: 0,
@@ -464,192 +618,240 @@
             });
 
             state.matches.forEach(m => {
-                if (m.gols_mandante == null || m.gols_visitante == null) return;
-                if (m.ao_vivo) return;
-
-                const home = stats[m.mandante];
-                const away = stats[m.visitante];
-                if (!home || !away) return;
-
-                home.played++; away.played++;
-                home.gf += m.gols_mandante; home.ga += m.gols_visitante;
-                away.gf += m.gols_visitante; away.ga += m.gols_mandante;
-
+                if (m.gols_mandante == null || m.gols_visitante == null || m.ao_vivo) return;
+                const h = stats[m.mandante], a = stats[m.visitante];
+                if (!h || !a) return;
+                h.played++; a.played++;
+                h.gf += m.gols_mandante; h.ga += m.gols_visitante;
+                a.gf += m.gols_visitante; a.ga += m.gols_mandante;
                 if (m.gols_mandante > m.gols_visitante) {
-                    if (m.tiebreak) { home.tbWins++; home.pts += 2; away.tbLosses++; away.pts += 1; }
-                    else            { home.wins++;   home.pts += 3; away.losses++; }
+                    m.tiebreak ? (h.tbWins++, h.pts+=2, a.tbLosses++, a.pts+=1) : (h.wins++, h.pts+=3, a.losses++);
                 } else if (m.gols_mandante < m.gols_visitante) {
-                    if (m.tiebreak) { away.tbWins++; away.pts += 2; home.tbLosses++; home.pts += 1; }
-                    else            { away.wins++;   away.pts += 3; home.losses++; }
+                    m.tiebreak ? (a.tbWins++, a.pts+=2, h.tbLosses++, h.pts+=1) : (a.wins++, a.pts+=3, h.losses++);
                 } else {
-                    home.draws++; home.pts++;
-                    away.draws++; away.pts++;
+                    h.draws++; h.pts++; a.draws++; a.pts++;
                 }
             });
 
             return Object.values(stats).sort((a, b) => {
                 if (b.pts  !== a.pts)  return b.pts  - a.pts;
                 if (b.wins !== a.wins) return b.wins - a.wins;
-                const sgA = a.gf - a.ga, sgB = b.gf - b.ga;
-                if (sgB !== sgA) return sgB - sgA;
+                if ((b.gf-b.ga) !== (a.gf-a.ga)) return (b.gf-b.ga) - (a.gf-a.ga);
                 return b.gf - a.gf;
             });
         }
 
-        /* ── Helpers ── */
-        function phaseName(fase) {
-            return { playin: 'Play-In', quartas: 'Quartas de Final', semis: 'Semifinais', final: 'Final' }[fase] || fase;
-        }
-
-        function scoreOf(m) {
-            if (m.isBracket) return { h: m.gols1 ?? 0, a: m.gols2 ?? 0 };
-            return { h: m.gols_mandante ?? 0, a: m.gols_visitante ?? 0 };
-        }
-
-        function teamNames(m) {
-            if (m.isBracket) return { home: m.time1, away: m.time2 };
-            return { home: m.mandante, away: m.visitante };
-        }
-
-        /* ── Render principal ── */
+        /* ════════════════════════════════════════
+           RENDER
+        ════════════════════════════════════════ */
         function render() {
-            document.getElementById('app').innerHTML =
-                MODE === 'full' ? renderFull() : renderMini();
+            document.getElementById('app').innerHTML = {
+                mini:   renderMini,
+                corner: renderCorner,
+                full:   renderFull,
+            }[MODE]?.() ?? renderMini();
         }
 
-        /* ═══════════════════════════════════════
-           MINI
-        ═══════════════════════════════════════ */
+        /* ─── MINI ─── */
         function renderMini() {
             const lm = state.liveMatch;
-            const showStandings = state.tableView === 'standings';
+            if (!lm) return `<div class="mini-no-live">Nenhum jogo ao vivo</div>`;
 
-            const scoreSection = lm
-                ? (() => {
-                    const { h, a } = scoreOf(lm);
-                    const { home, away } = teamNames(lm);
-                    return `
-                        <div class="mini-scoreboard">
-                            <span class="live-badge">🔴 AO VIVO</span>
-                            <span class="mini-team">${home}</span>
-                            <span class="mini-score">${h} × ${a}</span>
-                            <span class="mini-team">${away}</span>
-                        </div>
-                        <div class="sep"></div>
-                    `;
-                })()
-                : `<span class="no-live">Nenhum jogo ao vivo</span><div class="sep"></div>`;
-
-            const tableSection = `
-                <div class="mini-table-section">
-                    <div class="mini-table-label">${showStandings ? 'Classificação' : 'Chaveamento'}</div>
-                    <div class="mini-rows">${showStandings ? miniStandings() : miniBracket()}</div>
-                </div>
-            `;
-
-            return `<div class="mini-container">${scoreSection}${tableSection}</div>`;
-        }
-
-        function miniStandings() {
-            const top = calculateStandings().slice(0, 6);
-            if (!top.length) return `<span class="no-live">Sem dados</span>`;
-            return top.map((t, i) => `
-                <div class="mini-row">
-                    <span class="mini-pos">${i + 1}.</span>
-                    <span class="mini-abbr">${t.abbr}</span>
-                    <span class="mini-pts">${t.pts}p</span>
-                </div>
-            `).join('');
-        }
-
-        function miniBracket() {
-            const phases = ['final', 'semis', 'quartas', 'playin'];
-            for (const fase of phases) {
-                const matches = state.knockout.filter(m => m.fase === fase && (m.time1 || m.time2));
-                if (!matches.length) continue;
-                return matches.slice(0, 3).map(m => {
-                    const g1 = m.gols1 ?? '–';
-                    const g2 = m.gols2 ?? '–';
-                    return `<div class="mini-bracket-row">
-                        <span>${m.time1 || '?'}</span>
-                        <span class="mini-bracket-score">${g1}×${g2}</span>
-                        <span>${m.time2 || '?'}</span>
-                    </div>`;
-                }).join('');
-            }
-            return `<span class="no-live">Bracket vazio</span>`;
-        }
-
-        /* ═══════════════════════════════════════
-           FULL
-        ═══════════════════════════════════════ */
-        function renderFull() {
-            const lm = state.liveMatch;
-            const champName = state.config.nome_campeonato || 'Campeonato';
-            const classif   = state.config.classificados  || 4;
-            const showStandings = state.tableView === 'standings';
-
-            const scoreBlock = lm
-                ? (() => {
-                    const { h, a } = scoreOf(lm);
-                    const { home, away } = teamNames(lm);
-                    const pen = lm.isBracket && (lm.pen1 != null || lm.pen2 != null)
-                        ? `<div class="full-pen">Pênaltis: ${lm.pen1 ?? 0} × ${lm.pen2 ?? 0}</div>` : '';
-                    return `
-                        <div class="full-scoreboard">
-                            <div class="full-team">${home}</div>
-                            <div class="full-score-center">
-                                <div class="full-score-line">
-                                    <span class="full-score-num">${h}</span>
-                                    <span class="full-score-x">×</span>
-                                    <span class="full-score-num">${a}</span>
-                                </div>
-                                <span class="full-live-badge">🔴 AO VIVO</span>
-                                ${pen}
-                            </div>
-                            <div class="full-team right">${away}</div>
-                        </div>
-                    `;
-                })()
-                : `<div class="full-scoreboard"><div class="full-awaiting">Aguardando jogo ao vivo…</div></div>`;
-
-            const tableBlock = `
-                <div class="full-table-wrap">
-                    <div class="full-table-bar">
-                        <span class="full-table-title">${showStandings ? '📊 Classificação' : '🏆 Chaveamento'}</span>
-                        <span class="full-table-hint">alterna a cada ${TABLE_INTERVAL_MS / 1000}s</span>
-                    </div>
-                    ${showStandings ? fullStandings(classif) : fullBracket()}
-                </div>
-            `;
+            const { h, a }     = scoreOf(lm);
+            const { home, away } = namesOf(lm);
+            const ti = teamInfo(home), ai = teamInfo(away);
 
             return `
-                <div class="full-container">
-                    <div class="full-champ-name">${champName}</div>
+                <div class="mini-wrap">
+                    <div class="mini-side home"
+                         style="background:${gradient(ti.cores)}; text-shadow:0 1px 5px rgba(0,0,0,0.6)">
+                        ${ti.abbr}
+                    </div>
+                    <div class="mini-center">
+                        <div class="mini-score-digits">${h} × ${a}</div>
+                        <div class="live-dot">● AO VIVO</div>
+                    </div>
+                    <div class="mini-side away"
+                         style="background:${gradient(ai.cores)}; text-shadow:0 1px 5px rgba(0,0,0,0.6)">
+                        ${ai.abbr}
+                    </div>
+                </div>
+            `;
+        }
+
+        /* ─── CORNER ─── */
+        function renderCorner() {
+            const lm  = state.liveMatch;
+            const classif = state.config.classificados || 4;
+            const standings = calcStandings().slice(0, MAX_ROWS);
+
+            const scoreBlock = (() => {
+                if (!lm) return `
+                    <div class="corner-score" style="background:rgba(0,0,0,0.7)">
+                        <div style="padding:14px;text-align:center;font-size:11px;color:rgba(255,255,255,0.25);font-style:italic">
+                            Aguardando jogo…
+                        </div>
+                    </div>`;
+
+                const { h, a }       = scoreOf(lm);
+                const { home, away } = namesOf(lm);
+                const ti = teamInfo(home), ai = teamInfo(away);
+                const pen = lm._bracket && (lm.pen1 != null || lm.pen2 != null)
+                    ? `<div class="corner-score-footer">Pênaltis: ${lm.pen1 ?? 0} × ${lm.pen2 ?? 0}</div>` : '';
+
+                return `
+                    <div class="corner-score">
+                        <div class="corner-score-teams">
+                            <div class="corner-score-side"
+                                 style="background:${gradient(ti.cores)}">
+                                <div class="corner-score-abbr">${ti.abbr}</div>
+                                <div class="corner-score-name">${ti.name}</div>
+                            </div>
+                            <div class="corner-score-mid">
+                                <div class="corner-score-nums">${h} × ${a}</div>
+                                <div class="corner-live-dot">● AO VIVO</div>
+                            </div>
+                            <div class="corner-score-side"
+                                 style="background:${gradient(ai.cores)}">
+                                <div class="corner-score-abbr">${ai.abbr}</div>
+                                <div class="corner-score-name">${ai.name}</div>
+                            </div>
+                        </div>
+                        ${pen}
+                    </div>
+                `;
+            })();
+
+            const tableLabel = TABLE === 'bracket' ? '🏆 Chaveamento' : '📊 Classificação';
+            const tableRows  = TABLE === 'bracket'
+                ? cornerBracket()
+                : standings.map((t, i) => {
+                    const zone = i < classif ? 'zone-q' : (i < 12 ? 'zone-pi' : '');
+                    return `
+                        <div class="corner-row ${zone}">
+                            <div class="c-swatch" style="background:${t.color}"></div>
+                            <div class="c-pos">${i+1}</div>
+                            <div class="c-abbr" style="color:${t.color}">${t.abbr}</div>
+                            <div style="flex:1"></div>
+                            <div class="c-pj">${t.played}j</div>
+                            <div class="c-pts" style="color:${t.color}">${t.pts}p</div>
+                        </div>
+                    `;
+                  }).join('');
+
+            return `
+                <div class="corner-wrap">
                     ${scoreBlock}
-                    ${tableBlock}
+                    <div class="corner-table-wrap">
+                        <div class="corner-table-header">${tableLabel}</div>
+                        ${tableRows}
+                    </div>
+                </div>
+            `;
+        }
+
+        function cornerBracket() {
+            const phases = ['final','semis','quartas','playin'];
+            for (const fase of phases) {
+                const ms = state.knockout.filter(m => m.fase === fase && (m.time1 || m.time2));
+                if (!ms.length) continue;
+                return ms.slice(0, MAX_ROWS).map(m => {
+                    const ti = teamInfo(m.time1), ai = teamInfo(m.time2);
+                    const s1 = m.gols1 ?? '–', s2 = m.gols2 ?? '–';
+                    return `
+                        <div class="corner-row">
+                            <div class="c-swatch" style="background:${ti.color}"></div>
+                            <div class="c-abbr" style="color:${ti.color};flex:1">${ti.abbr}</div>
+                            <div class="c-pts">${s1}×${s2}</div>
+                            <div class="c-abbr" style="color:${ai.color};flex:1;text-align:right">${ai.abbr}</div>
+                            <div class="c-swatch" style="background:${ai.color}"></div>
+                        </div>`;
+                }).join('');
+            }
+            return `<div style="padding:12px;font-size:11px;color:rgba(255,255,255,0.25);text-align:center">Bracket vazio</div>`;
+        }
+
+        /* ─── FULL ─── */
+        function renderFull() {
+            const lm        = state.liveMatch;
+            const champName = state.config.nome_campeonato || 'Campeonato';
+            const classif   = state.config.classificados  || 4;
+
+            const scoreBlock = (() => {
+                if (!lm) return `<div class="full-awaiting">Aguardando jogo ao vivo…</div>`;
+
+                const { h, a }       = scoreOf(lm);
+                const { home, away } = namesOf(lm);
+                const ti = teamInfo(home), ai = teamInfo(away);
+                const pen = lm._bracket && (lm.pen1 != null || lm.pen2 != null)
+                    ? `<div class="full-pen-info">Pênaltis: ${lm.pen1 ?? 0} × ${lm.pen2 ?? 0}</div>` : '';
+
+                return `
+                    <div class="full-scoreboard">
+                        <div class="full-team-side home"
+                             style="background:${gradient(ti.cores)}; justify-content:flex-end">
+                            <div class="full-team-info" style="align-items:flex-end">
+                                <div class="full-team-abbr">${ti.abbr}</div>
+                                <div class="full-team-name">${ti.name}</div>
+                            </div>
+                        </div>
+                        <div class="full-score-mid">
+                            <div class="full-score-nums">
+                                <span class="full-score-n">${h}</span>
+                                <span class="full-score-sep">×</span>
+                                <span class="full-score-n">${a}</span>
+                            </div>
+                            <span class="full-live-badge">🔴 AO VIVO</span>
+                            ${pen}
+                        </div>
+                        <div class="full-team-side away"
+                             style="background:${gradient(ai.cores)}">
+                            <div class="full-team-info" style="align-items:flex-start">
+                                <div class="full-team-abbr">${ai.abbr}</div>
+                                <div class="full-team-name">${ai.name}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            })();
+
+            const tableLabel  = TABLE === 'bracket' ? '🏆 Chaveamento' : '📊 Classificação';
+            const tableContent = TABLE === 'bracket' ? fullBracket() : fullStandings(classif);
+
+            return `
+                <div class="full-wrap">
+                    <div class="full-champ-label">${champName}</div>
+                    ${scoreBlock}
+                    <div class="full-table-wrap">
+                        <div class="full-table-header">${tableLabel}</div>
+                        ${tableContent}
+                    </div>
                 </div>
             `;
         }
 
         function fullStandings(classif) {
-            const standings = calculateStandings();
-            if (!standings.length) return `<div class="full-awaiting">Sem dados de classificação</div>`;
+            const standings = calcStandings();
+            if (!standings.length) return `<div style="padding:20px;text-align:center;color:rgba(255,255,255,0.2);font-style:italic">Sem dados</div>`;
 
             const rows = standings.map((t, i) => {
                 const zone = i < classif ? 'zone-q' : (i < 12 ? 'zone-pi' : '');
+                const sg   = t.gf - t.ga;
                 return `
                     <tr class="${zone}">
-                        <td class="muted">${i + 1}</td>
-                        <td class="left">${t.name}</td>
+                        <td class="muted">${i+1}</td>
+                        <td class="tleft">
+                            <span class="t-swatch" style="background:${t.color}"></span>
+                            <span class="t-name" style="color:${t.color}">${t.name}</span>
+                        </td>
                         <td class="muted">${t.played}</td>
                         <td>${t.wins}</td>
                         <td class="muted">${t.draws}</td>
                         <td class="muted">${t.losses}</td>
                         <td>${t.gf}</td>
                         <td class="muted">${t.ga}</td>
-                        <td>${t.gf - t.ga > 0 ? '+' : ''}${t.gf - t.ga}</td>
-                        <td class="pts">${t.pts}</td>
+                        <td>${sg > 0 ? '+' : ''}${sg}</td>
+                        <td class="t-pts" style="color:${t.color}">${t.pts}</td>
                     </tr>
                 `;
             }).join('');
@@ -658,15 +860,14 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>#</th>
-                            <th class="left">Time</th>
-                            <th title="Jogos">PJ</th>
+                            <th>#</th><th class="tleft">Time</th>
+                            <th title="Partidas Jogadas">PJ</th>
                             <th title="Vitórias">V</th>
                             <th title="Empates">E</th>
                             <th title="Derrotas">D</th>
-                            <th title="Gols pró">GP</th>
-                            <th title="Gols contra">GC</th>
-                            <th title="Saldo de gols">SG</th>
+                            <th title="Gols Pró">GP</th>
+                            <th title="Gols Contra">GC</th>
+                            <th title="Saldo">SG</th>
                             <th title="Pontos">P</th>
                         </tr>
                     </thead>
@@ -676,40 +877,45 @@
         }
 
         function fullBracket() {
-            const phases = ['playin', 'quartas', 'semis', 'final'];
-            const hasAny = state.knockout.some(m => m.time1 || m.time2);
-            if (!hasAny) return `<div class="full-awaiting">Chaveamento ainda não iniciado</div>`;
+            const phases = ['playin','quartas','semis','final'];
+            if (!state.knockout.some(m => m.time1 || m.time2))
+                return `<div style="padding:20px;text-align:center;color:rgba(255,255,255,0.2);font-style:italic">Chaveamento não iniciado</div>`;
 
-            const sections = phases.map(fase => {
-                const matches = state.knockout.filter(m => m.fase === fase);
-                if (!matches.length) return '';
+            const html = phases.map(fase => {
+                const ms = state.knockout.filter(m => m.fase === fase);
+                if (!ms.length) return '';
+                const cols = Math.min(ms.length, 2);
 
-                const cols = Math.min(matches.length, 2);
-                const matchCards = matches.map(m => {
+                const cards = ms.map(m => {
+                    const ti = teamInfo(m.time1), ai = teamInfo(m.time2);
                     const hasScore = m.gols1 != null && m.gols2 != null;
                     const w1 = hasScore && m.gols1 > m.gols2;
                     const w2 = hasScore && m.gols2 > m.gols1;
-                    const scoreLabel = hasScore ? `${m.gols1} × ${m.gols2}` : 'vs';
+                    const score = hasScore ? `${m.gols1} × ${m.gols2}` : 'vs';
                     return `
-                        <div class="bracket-match">
-                            <span class="b-team ${w1 ? 'winner' : ''}">${m.time1 || '—'}</span>
-                            <span class="b-score">${scoreLabel}</span>
-                            <span class="b-team right ${w2 ? 'winner' : ''}">${m.time2 || '—'}</span>
+                        <div class="bm">
+                            <div class="bm-team ${w1 ? 'winner' : ''}" style="background:${hex2rgba(ti.color,0.12)}">
+                                <div class="bm-dot" style="background:${ti.color}"></div>
+                                <span style="color:${w1 ? '#68d391' : '#fff'}">${ti.name}</span>
+                            </div>
+                            <div class="bm-score">${score}</div>
+                            <div class="bm-team right ${w2 ? 'winner' : ''}" style="background:${hex2rgba(ai.color,0.12)}">
+                                <span style="color:${w2 ? '#68d391' : '#fff'}">${ai.name}</span>
+                                <div class="bm-dot" style="background:${ai.color}"></div>
+                            </div>
                         </div>
                     `;
                 }).join('');
 
                 return `
                     <div>
-                        <div class="bracket-phase-title">${phaseName(fase)}</div>
-                        <div class="bracket-grid" style="grid-template-columns: repeat(${cols}, 1fr);">
-                            ${matchCards}
-                        </div>
+                        <div class="bracket-phase-label">${phaseName(fase)}</div>
+                        <div class="bracket-grid" style="grid-template-columns:repeat(${cols},1fr)">${cards}</div>
                     </div>
                 `;
             }).join('');
 
-            return `<div class="bracket-body">${sections}</div>`;
+            return `<div class="bracket-wrap">${html}</div>`;
         }
 
         render();
