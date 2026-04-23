@@ -166,12 +166,9 @@
             border-bottom: 1px solid #21262d;
         }
 
-        /* zonas — mesmos valores do app */
-        .c-row.zone-q        { background: rgba(63,185,80,0.08); }
+        /* zonas — só bordas separadoras, sem background */
         .c-row.zone-q-border { border-bottom: 2px solid rgba(63,185,80,0.4); }
-        .c-row.zone-pi       { background: rgba(210,153,34,0.08); }
         .c-row.zone-pi-border{ border-bottom: 2px solid rgba(210,153,34,0.4); }
-        .c-row.zone-out      { background: rgba(248,81,73,0.06); }
 
         /* posição colorida por zona */
         .c-pos          { font-size:11px; font-weight:700; color:#8b949e; text-align:center; }
@@ -539,8 +536,8 @@
             };
         }
 
-        /* SVG pill idêntico ao app (teamColorPill) */
-        function colorPill(cores, height = 16) {
+        /* SVG pill idêntico ao app (teamColorPill). inline=true remove a margem lateral */
+        function colorPill(cores, height = 16, inline = false) {
             const w = 4, n = cores.length, chamfer = 2;
             let segs = '';
             if (n === 1) {
@@ -556,7 +553,8 @@
                     segs += `<polygon points="0,${tlY} ${w},${trY} ${w},${brY} 0,${blY}" fill="${c}"/>`;
                 });
             }
-            return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${height}" style="border-radius:2px;vertical-align:middle;flex-shrink:0;margin-right:6px;overflow:hidden">${segs}</svg>`;
+            const margin = inline ? '0' : '6px';
+            return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${height}" style="border-radius:2px;vertical-align:middle;flex-shrink:0;margin-right:${margin};overflow:hidden">${segs}</svg>`;
         }
 
         function hex2rgba(hex, a) {
@@ -635,7 +633,7 @@
 
             return `
                 <div class="mini-card">
-                    <div class="mini-flag" style="background:${ti.color}"></div>
+                    ${colorPill(ti.cores, 44, true)}
                     <div class="mini-team-block">
                         <span class="mini-abbr">${ti.abbr}</span>
                         <span class="mini-name">${ti.name}</span>
@@ -648,7 +646,7 @@
                         <span class="mini-abbr">${ai.abbr}</span>
                         <span class="mini-name">${ai.name}</span>
                     </div>
-                    <div class="mini-flag" style="background:${ai.color}"></div>
+                    ${colorPill(ai.cores, 44, true)}
                 </div>
             `;
         }
@@ -768,7 +766,7 @@
                     ? `<div class="full-pen">Pênaltis: ${lm.pen1 ?? 0} × ${lm.pen2 ?? 0}</div>` : '';
                 return `
                     <div class="full-scoreboard">
-                        <div class="full-flag" style="background:${ti.color}"></div>
+                        ${colorPill(ti.cores, 130, true)}
                         <div class="full-team-block right">
                             <div class="full-team-abbr">${ti.abbr}</div>
                             <div class="full-team-name">${ti.name}</div>
@@ -786,7 +784,7 @@
                             <div class="full-team-abbr">${ai.abbr}</div>
                             <div class="full-team-name">${ai.name}</div>
                         </div>
-                        <div class="full-flag" style="background:${ai.color}"></div>
+                        ${colorPill(ai.cores, 130, true)}
                     </div>
                 `;
             })();
