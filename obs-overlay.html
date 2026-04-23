@@ -486,6 +486,7 @@
         // standings | bracket  (usado nos modos corner e full)
         const TABLE    = params.get('table') || 'standings';
         const MAX_ROWS = parseInt(params.get('rows') || '12', 10);
+        const DEMO     = params.has('demo');
 
         document.body.classList.add('mode-' + MODE);
 
@@ -498,7 +499,67 @@
             config:    {},
         };
 
-        /* ── Listeners ── */
+        /* ══════════════════════════════════════════
+           DEMO — dados falsos, sem conexão Firebase
+        ══════════════════════════════════════════ */
+        if (DEMO) {
+            const DEMO_TEAMS = [
+                { nome: 'Flamengo',      sigla: 'FLA', cor: '#e31e25', cores: ['#e31e25', '#000000'] },
+                { nome: 'Palmeiras',     sigla: 'PAL', cor: '#006437', cores: ['#006437'] },
+                { nome: 'Atlético-MG',   sigla: 'CAM', cor: '#000000', cores: ['#000000', '#ffffff'] },
+                { nome: 'Fluminense',    sigla: 'FLU', cor: '#8b0000', cores: ['#8b0000', '#6db33f', '#6b4226'] },
+                { nome: 'Corinthians',   sigla: 'COR', cor: '#555555', cores: ['#000000', '#ffffff'] },
+                { nome: 'São Paulo',     sigla: 'SPF', cor: '#cc0000', cores: ['#cc0000', '#ffffff', '#000000'] },
+                { nome: 'Grêmio',        sigla: 'GRE', cor: '#3b6fb5', cores: ['#3b6fb5', '#000000', '#6dc4d8'] },
+                { nome: 'Internacional', sigla: 'INT', cor: '#cc0000', cores: ['#cc0000'] },
+                { nome: 'Vasco',         sigla: 'VAS', cor: '#555555', cores: ['#000000', '#ffffff'] },
+                { nome: 'Botafogo',      sigla: 'BOT', cor: '#555555', cores: ['#000000', '#ffffff'] },
+                { nome: 'Santos',        sigla: 'SAN', cor: '#555555', cores: ['#000000', '#ffffff'] },
+                { nome: 'Cruzeiro',      sigla: 'CRU', cor: '#0033a0', cores: ['#0033a0'] },
+            ];
+            state.teams  = DEMO_TEAMS;
+            state.config = { nome_campeonato: 'Demo League', classificados: 4 };
+            state.matches = [
+                { mandante:'Flamengo',      visitante:'Palmeiras',     gols_mandante:2, gols_visitante:1, rodada:1 },
+                { mandante:'Atlético-MG',   visitante:'Fluminense',    gols_mandante:0, gols_visitante:0, rodada:1 },
+                { mandante:'Corinthians',   visitante:'São Paulo',     gols_mandante:3, gols_visitante:1, rodada:1 },
+                { mandante:'Grêmio',        visitante:'Internacional', gols_mandante:1, gols_visitante:2, rodada:1 },
+                { mandante:'Vasco',         visitante:'Botafogo',      gols_mandante:1, gols_visitante:1, rodada:1 },
+                { mandante:'Santos',        visitante:'Cruzeiro',      gols_mandante:0, gols_visitante:1, rodada:1 },
+                { mandante:'Palmeiras',     visitante:'Atlético-MG',   gols_mandante:1, gols_visitante:0, rodada:2 },
+                { mandante:'Fluminense',    visitante:'Corinthians',   gols_mandante:2, gols_visitante:2, rodada:2 },
+                { mandante:'São Paulo',     visitante:'Grêmio',        gols_mandante:1, gols_visitante:0, rodada:2 },
+                { mandante:'Internacional', visitante:'Vasco',         gols_mandante:3, gols_visitante:1, rodada:2 },
+                { mandante:'Botafogo',      visitante:'Santos',        gols_mandante:0, gols_visitante:2, rodada:2 },
+                { mandante:'Cruzeiro',      visitante:'Flamengo',      gols_mandante:1, gols_visitante:3, rodada:2 },
+            ];
+            state.liveMatch = {
+                mandante: 'Flamengo', visitante: 'Palmeiras',
+                gols_mandante: 2, gols_visitante: 1,
+                ao_vivo: true, _bracket: false,
+            };
+            state.knockout = [
+                { fase:'quartas', ordem:1, time1:'Flamengo',     time2:'Grêmio',       gols1:2, gols2:0 },
+                { fase:'quartas', ordem:2, time1:'Palmeiras',    time2:'Cruzeiro',     gols1:1, gols2:0 },
+                { fase:'quartas', ordem:3, time1:'Atlético-MG',  time2:'São Paulo',    gols1:null, gols2:null },
+                { fase:'quartas', ordem:4, time1:'Internacional', time2:'Botafogo',    gols1:null, gols2:null },
+                { fase:'semis',   ordem:1, time1:'Flamengo',     time2:'Palmeiras',    gols1:null, gols2:null },
+            ];
+            // simula gol a cada 8s para demonstrar atualização em tempo real
+            let demoTick = 0;
+            setInterval(() => {
+                demoTick++;
+                state.liveMatch = {
+                    ...state.liveMatch,
+                    gols_mandante:  2 + Math.floor(demoTick / 2),
+                    gols_visitante: 1 + (demoTick % 2),
+                };
+                render();
+            }, 8000);
+            render();
+        } else {
+
+        /* ── Listeners Firebase (só quando não é demo) ── */
         onSnapshot(collection(db, 'jogos'), snap => {
             state.matches = snap.docs
                 .map(d => ({ id: d.id, ...d.data() }))
@@ -529,6 +590,8 @@
             state.config = snap.exists() ? snap.data() : {};
             render();
         });
+
+        } // fim else DEMO
 
         /* ════════════════════════════════════════
            HELPERS
