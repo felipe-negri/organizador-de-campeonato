@@ -16,13 +16,13 @@
 
         @keyframes blink {
             0%, 100% { opacity: 1; }
-            50%       { opacity: 0.35; }
+            50%       { opacity: 0.3; }
         }
 
         /* ══════════════════════════════════════════════
            MODO MINI  ?mode=mini
-           Só o placar ao vivo.
-           Tamanho OBS sugerido: 600 × 80
+           Só o placar ao vivo, estilo dark com bandeirinha.
+           Tamanho OBS sugerido: 520 × 72
         ══════════════════════════════════════════════ */
         body.mode-mini {
             display: flex;
@@ -32,70 +32,87 @@
             height: 100vh;
         }
 
-        .mini-wrap {
-            display: flex;
-            align-items: stretch;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 30px rgba(0,0,0,0.6);
-            min-width: 420px;
-            height: 72px;
-        }
-
-        .mini-side {
-            flex: 1;
+        .mini-card {
             display: flex;
             align-items: center;
-            justify-content: center;
-            padding: 0 18px;
-            font-size: 16px;
-            font-weight: 800;
-            text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+            background: rgba(10,10,14,0.90);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 28px rgba(0,0,0,0.7);
+            height: 60px;
+            min-width: 380px;
         }
 
-        .mini-side.home { justify-content: flex-end; }
-        .mini-side.away { justify-content: flex-start; }
+        /* bandeirinha lateral colorida */
+        .mini-flag {
+            width: 5px;
+            height: 100%;
+            flex-shrink: 0;
+        }
 
-        .mini-center {
+        .mini-team-block {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 14px;
+            flex: 1;
+        }
+
+        .mini-team-block.right { flex-direction: row-reverse; }
+
+        .mini-abbr {
+            font-size: 15px;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+        }
+
+        .mini-name {
+            font-size: 10px;
+            color: rgba(255,255,255,0.45);
+            font-weight: 500;
+        }
+
+        .mini-center-block {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: rgba(0,0,0,0.85);
-            padding: 0 20px;
+            padding: 0 18px;
+            border-left: 1px solid rgba(255,255,255,0.07);
+            border-right: 1px solid rgba(255,255,255,0.07);
             flex-shrink: 0;
             gap: 4px;
+            height: 100%;
         }
 
-        .mini-score-digits {
-            font-size: 28px;
+        .mini-digits {
+            font-size: 26px;
             font-weight: 900;
-            letter-spacing: 3px;
+            letter-spacing: 4px;
             line-height: 1;
         }
 
         .live-dot {
-            font-size: 9px;
+            font-size: 8px;
             font-weight: 700;
             color: #fc8181;
             letter-spacing: 1.5px;
-            text-transform: uppercase;
             animation: blink 1.5s infinite;
         }
 
         .mini-no-live {
-            background: rgba(0,0,0,0.7);
-            border-radius: 12px;
-            padding: 16px 28px;
-            font-size: 13px;
-            color: rgba(255,255,255,0.3);
+            background: rgba(10,10,14,0.85);
+            border-radius: 10px;
+            padding: 14px 24px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.25);
             font-style: italic;
         }
 
         /* ══════════════════════════════════════════════
            MODO CORNER  ?mode=corner
-           Placar compacto + classificação resumida, num canto.
-           Tamanho OBS sugerido: 340 × 560
+           Só a tabela, no canto. Sem placar.
+           Tamanho OBS sugerido: 300 × 520
         ══════════════════════════════════════════════ */
         body.mode-corner {
             display: flex;
@@ -103,156 +120,109 @@
             justify-content: flex-start;
             width: 100vw;
             height: 100vh;
-            padding: 14px;
+            padding: 12px;
         }
 
         .corner-wrap {
-            width: 312px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            width: 276px;
         }
 
-        /* placar corner */
-        .corner-score {
+        .corner-panel {
+            background: rgba(10,10,14,0.88);
             border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 3px 20px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.6);
         }
 
-        .corner-score-teams {
+        .panel-header {
             display: flex;
-            height: 58px;
-        }
-
-        .corner-score-side {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 6px 10px;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
-        }
-
-        .corner-score-abbr {
-            font-size: 18px;
-            font-weight: 900;
-            line-height: 1;
-        }
-
-        .corner-score-name {
-            font-size: 9px;
-            font-weight: 600;
-            opacity: 0.75;
-            margin-top: 2px;
-            max-width: 100%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .corner-score-mid {
-            background: rgba(0,0,0,0.88);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 0 12px;
-            flex-shrink: 0;
-            gap: 3px;
-        }
-
-        .corner-score-nums {
-            font-size: 26px;
-            font-weight: 900;
-            letter-spacing: 2px;
-            line-height: 1;
-        }
-
-        .corner-live-dot {
-            font-size: 8px;
-            font-weight: 700;
-            color: #fc8181;
-            letter-spacing: 1px;
-            animation: blink 1.5s infinite;
-        }
-
-        .corner-score-footer {
-            background: rgba(0,0,0,0.65);
-            text-align: center;
-            font-size: 9px;
-            color: rgba(255,255,255,0.35);
-            padding: 4px;
-        }
-
-        /* tabela corner */
-        .corner-table-wrap {
-            background: rgba(0,0,0,0.72);
-            backdrop-filter: blur(10px);
-            border-radius: 10px;
-            overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.06);
-        }
-
-        .corner-table-header {
-            padding: 8px 12px;
-            font-size: 9px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: rgba(255,255,255,0.4);
+            justify-content: space-between;
+            padding: 9px 14px;
             border-bottom: 1px solid rgba(255,255,255,0.06);
         }
 
-        .corner-row {
-            display: flex;
-            align-items: center;
-            padding: 6px 12px;
-            border-top: 1px solid rgba(255,255,255,0.04);
-            gap: 8px;
+        .panel-title {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2.5px;
+            color: rgba(255,255,255,0.35);
         }
 
-        .corner-row.zone-q  { background: rgba(72,187,120,0.07); }
-        .corner-row.zone-pi { background: rgba(246,173,85,0.05); }
+        .panel-champ {
+            font-size: 9px;
+            color: rgba(255,255,255,0.2);
+            font-style: italic;
+        }
 
-        .c-swatch {
-            width: 3px;
-            height: 22px;
+        /* linha da tabela corner */
+        .c-row {
+            display: flex;
+            align-items: center;
+            padding: 5px 14px 5px 10px;
+            border-top: 1px solid rgba(255,255,255,0.035);
+            gap: 7px;
+            min-height: 34px;
+        }
+
+        .c-row.zone-q  { background: rgba(72,187,120,0.06); }
+        .c-row.zone-pi { background: rgba(246,173,85,0.05); }
+
+        /* bandeirinha na tabela */
+        .c-flag {
+            width: 4px;
+            height: 20px;
             border-radius: 2px;
             flex-shrink: 0;
         }
 
         .c-pos {
             font-size: 10px;
-            color: rgba(255,255,255,0.3);
-            width: 14px;
+            color: rgba(255,255,255,0.28);
+            width: 16px;
             text-align: right;
             flex-shrink: 0;
+            font-weight: 600;
         }
 
-        .c-abbr {
+        .c-name {
             font-size: 12px;
-            font-weight: 800;
+            font-weight: 700;
             flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .c-pts {
             font-size: 13px;
             font-weight: 900;
+            min-width: 26px;
+            text-align: right;
         }
 
-        .c-pj {
-            font-size: 10px;
-            color: rgba(255,255,255,0.35);
-            width: 20px;
+        .c-sub {
+            font-size: 9px;
+            color: rgba(255,255,255,0.25);
+            min-width: 28px;
             text-align: right;
+        }
+
+        .panel-footer {
+            padding: 8px 14px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.2);
         }
 
         /* ══════════════════════════════════════════════
            MODO FULL  ?mode=full
-           Placar grande + tabela completa centralizado.
-           Tamanho OBS sugerido: 900 × 700 (ou 1920×1080)
+           Placar grande + tabela completa.
+           Tamanho OBS sugerido: 900 × 700
         ══════════════════════════════════════════════ */
         body.mode-full {
             display: flex;
@@ -263,133 +233,129 @@
         }
 
         .full-wrap {
-            width: min(880px, 96vw);
+            width: min(860px, 96vw);
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 14px;
         }
 
-        .full-champ-label {
-            text-align: center;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 5px;
-            text-transform: uppercase;
-            color: rgba(255,255,255,0.35);
-        }
-
-        /* placar full */
+        /* placar full — dark com bandeirinha */
         .full-scoreboard {
-            border-radius: 16px;
+            background: rgba(10,10,14,0.90);
+            border-radius: 14px;
             overflow: hidden;
-            box-shadow: 0 6px 40px rgba(0,0,0,0.6);
+            box-shadow: 0 6px 40px rgba(0,0,0,0.65);
             display: flex;
-            height: 150px;
+            align-items: stretch;
+            height: 130px;
         }
 
-        .full-team-side {
+        /* barra colorida na lateral */
+        .full-flag {
+            width: 6px;
+            flex-shrink: 0;
+        }
+
+        .full-team-block {
             flex: 1;
             display: flex;
-            align-items: center;
-            padding: 0 32px;
-            text-shadow: 0 2px 6px rgba(0,0,0,0.5);
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 28px;
+            gap: 5px;
         }
 
-        .full-team-side.home { justify-content: flex-end; }
-        .full-team-side.away { justify-content: flex-start; }
-
-        .full-team-info {
-            display: flex;
-            flex-direction: column;
-            align-items: inherit;
-            gap: 4px;
+        .full-team-block.right {
+            align-items: flex-end;
+            text-align: right;
         }
 
         .full-team-abbr {
-            font-size: 36px;
+            font-size: 28px;
             font-weight: 900;
             line-height: 1;
         }
 
         .full-team-name {
-            font-size: 13px;
-            font-weight: 600;
-            opacity: 0.75;
+            font-size: 12px;
+            color: rgba(255,255,255,0.45);
+            font-weight: 500;
         }
 
         .full-score-mid {
-            background: rgba(0,0,0,0.82);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 0 36px;
             flex-shrink: 0;
-            gap: 6px;
+            gap: 7px;
+            border-left: 1px solid rgba(255,255,255,0.06);
+            border-right: 1px solid rgba(255,255,255,0.06);
         }
 
-        .full-score-nums {
+        .full-digits {
             display: flex;
             align-items: center;
-            gap: 12px;
-        }
-
-        .full-score-n {
-            font-size: 68px;
+            gap: 10px;
+            font-size: 60px;
             font-weight: 900;
             line-height: 1;
+            letter-spacing: 2px;
         }
 
-        .full-score-sep {
-            font-size: 36px;
+        .full-sep {
+            font-size: 32px;
             font-weight: 300;
-            color: rgba(255,255,255,0.3);
+            color: rgba(255,255,255,0.2);
         }
 
         .full-live-badge {
-            background: #c53030;
-            font-size: 10px;
+            background: #9b1c1c;
+            font-size: 9px;
             font-weight: 800;
             padding: 3px 12px;
-            border-radius: 5px;
-            letter-spacing: 2px;
+            border-radius: 4px;
+            letter-spacing: 2.5px;
             animation: blink 1.5s infinite;
         }
 
-        .full-pen-info {
-            font-size: 11px;
-            color: rgba(255,255,255,0.4);
+        .full-pen {
+            font-size: 10px;
+            color: rgba(255,255,255,0.3);
         }
 
         .full-awaiting {
-            background: rgba(0,0,0,0.7);
-            border-radius: 16px;
+            background: rgba(10,10,14,0.85);
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 110px;
-            color: rgba(255,255,255,0.2);
-            font-size: 14px;
+            height: 90px;
+            color: rgba(255,255,255,0.15);
+            font-size: 13px;
             font-style: italic;
         }
 
         /* tabela full */
         .full-table-wrap {
-            background: rgba(0,0,0,0.75);
-            backdrop-filter: blur(12px);
+            background: rgba(10,10,14,0.88);
             border-radius: 14px;
             overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.06);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.5);
         }
 
         .full-table-header {
-            padding: 11px 18px;
-            font-size: 10px;
+            padding: 10px 16px;
+            font-size: 9px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 2.5px;
-            color: rgba(255,255,255,0.4);
-            border-bottom: 1px solid rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.3);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
         table {
@@ -399,20 +365,20 @@
         }
 
         thead th {
-            padding: 8px 12px;
+            padding: 7px 12px;
             text-align: center;
             font-size: 9px;
             font-weight: 700;
-            color: rgba(255,255,255,0.3);
+            color: rgba(255,255,255,0.25);
             text-transform: uppercase;
             letter-spacing: 1px;
         }
 
         thead th.tleft { text-align: left; }
 
-        tbody tr { border-top: 1px solid rgba(255,255,255,0.04); }
-        tbody tr.zone-q  { background: rgba(72,187,120,0.07); }
-        tbody tr.zone-pi { background: rgba(246,173,85,0.05); }
+        tbody tr { border-top: 1px solid rgba(255,255,255,0.035); }
+        tbody tr.zone-q  { background: rgba(72,187,120,0.06); }
+        tbody tr.zone-pi { background: rgba(246,173,85,0.04); }
 
         tbody td {
             padding: 7px 12px;
@@ -420,74 +386,75 @@
         }
 
         tbody td.tleft { text-align: left; }
-        tbody td.muted { color: rgba(255,255,255,0.35); }
+        tbody td.muted { color: rgba(255,255,255,0.3); }
 
-        .t-swatch {
+        /* bandeirinha na tabela full */
+        .t-flag {
             display: inline-block;
-            width: 3px;
-            height: 16px;
+            width: 4px;
+            height: 14px;
             border-radius: 2px;
             vertical-align: middle;
-            margin-right: 8px;
+            margin-right: 9px;
+            flex-shrink: 0;
         }
 
         .t-name { font-weight: 700; vertical-align: middle; }
-        .t-pts  { font-weight: 900; font-size: 15px; }
+        .t-pts  { font-weight: 900; font-size: 14px; }
 
         /* bracket full */
-        .bracket-wrap { padding: 16px 18px; display: flex; flex-direction: column; gap: 16px; }
+        .bracket-wrap { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
 
         .bracket-phase-label {
             font-size: 9px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 2px;
-            color: rgba(255,255,255,0.35);
-            margin-bottom: 7px;
+            color: rgba(255,255,255,0.28);
+            margin-bottom: 6px;
         }
 
-        .bracket-grid { display: grid; gap: 6px; }
+        .bracket-grid { display: grid; gap: 5px; }
 
         .bm {
             display: flex;
             align-items: center;
-            border-radius: 7px;
+            border-radius: 6px;
             overflow: hidden;
             font-size: 13px;
-            background: rgba(255,255,255,0.04);
+            background: rgba(255,255,255,0.03);
         }
 
         .bm-team {
             flex: 1;
             padding: 8px 12px;
             font-weight: 600;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 7px;
+            overflow: hidden;
         }
 
         .bm-team.right { flex-direction: row-reverse; }
-        .bm-team.winner { color: #68d391; }
 
-        .bm-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
+        .bm-flag {
+            width: 4px;
+            height: 14px;
+            border-radius: 2px;
             flex-shrink: 0;
         }
 
         .bm-score {
-            background: rgba(255,255,255,0.09);
+            background: rgba(255,255,255,0.07);
             padding: 8px 16px;
             font-weight: 900;
             font-size: 15px;
-            min-width: 60px;
+            min-width: 58px;
             text-align: center;
             flex-shrink: 0;
         }
+
+        .winner-text { color: #68d391; }
     </style>
 </head>
 <body>
@@ -498,7 +465,6 @@
         import { getFirestore, collection,
                  doc, onSnapshot }        from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
-        /* ── Firebase ── */
         const firebaseConfig = {
             apiKey:            'AIzaSyDKPy8Q8BNGUqGZ-DFIGyjguS7ZD_r9V8Q',
             authDomain:        'organizador-de-campeonato.firebaseapp.com',
@@ -512,9 +478,11 @@
 
         /* ── URL params ── */
         const params   = new URLSearchParams(location.search);
-        const MODE     = params.get('mode') || 'mini';   // mini | corner | full
-        const TABLE    = params.get('table') || 'standings'; // standings | bracket
-        const MAX_ROWS = parseInt(params.get('rows') || '8', 10);
+        // mini | corner | full
+        const MODE     = params.get('mode') || 'mini';
+        // standings | bracket  (usado nos modos corner e full)
+        const TABLE    = params.get('table') || 'standings';
+        const MAX_ROWS = parseInt(params.get('rows') || '12', 10);
 
         document.body.classList.add('mode-' + MODE);
 
@@ -531,22 +499,20 @@
         onSnapshot(collection(db, 'jogos'), snap => {
             state.matches = snap.docs
                 .map(d => ({ id: d.id, ...d.data() }))
-                .sort((a, b) => (a.rodada - b.rodada) || ((a.ordem || 0) - (b.ordem || 0)));
-
+                .sort((a, b) => (a.rodada - b.rodada) || ((a.ordem||0) - (b.ordem||0)));
             const live = state.matches.find(m => m.ao_vivo);
-            if (live) state.liveMatch = { ...live, _bracket: false };
+            if (live)                       state.liveMatch = { ...live, _bracket: false };
             else if (!state.liveMatch?._bracket) state.liveMatch = null;
             render();
         });
 
         onSnapshot(collection(db, 'mata_mata'), snap => {
-            const order = { playin: 0, quartas: 1, semis: 2, final: 3 };
+            const ord = { playin:0, quartas:1, semis:2, final:3 };
             state.knockout = snap.docs
                 .map(d => ({ id: d.id, ...d.data() }))
-                .sort((a, b) => (order[a.fase] - order[b.fase]) || ((a.ordem || 0) - (b.ordem || 0)));
-
+                .sort((a, b) => (ord[a.fase]-ord[b.fase]) || ((a.ordem||0)-(b.ordem||0)));
             const live = state.knockout.find(m => m.ao_vivo);
-            if (live) state.liveMatch = { ...live, _bracket: true };
+            if (live)                      state.liveMatch = { ...live, _bracket: true };
             else if (state.liveMatch?._bracket) state.liveMatch = null;
             render();
         });
@@ -567,22 +533,17 @@
         function teamInfo(name) {
             const t = state.teams.find(t => t.nome === name);
             return {
-                name:  name || '—',
-                abbr:  t?.sigla  || name?.slice(0, 3).toUpperCase() || '?',
-                color: t?.cor    || (t?.cores?.[0]) || '#555',
-                cores: t?.cores  || (t?.cor ? [t.cor] : ['#555']),
+                name:  name  || '—',
+                abbr:  t?.sigla || name?.slice(0,3).toUpperCase() || '?',
+                color: t?.cor  || t?.cores?.[0] || '#555',
             };
         }
 
-        function gradient(cores) {
-            if (!cores || cores.length < 2) return cores?.[0] || '#333';
-            return `linear-gradient(135deg, ${cores.join(', ')})`;
-        }
-
-        function hex2rgba(hex, a = 0.25) {
-            const r = parseInt(hex.slice(1,3), 16);
-            const g = parseInt(hex.slice(3,5), 16);
-            const b = parseInt(hex.slice(5,7), 16);
+        function hex2rgba(hex, a) {
+            if (!hex || hex.length < 7) return `rgba(80,80,80,${a})`;
+            const r = parseInt(hex.slice(1,3),16);
+            const g = parseInt(hex.slice(3,5),16);
+            const b = parseInt(hex.slice(5,7),16);
             return `rgba(${r},${g},${b},${a})`;
         }
 
@@ -599,10 +560,9 @@
         }
 
         function phaseName(f) {
-            return { playin: 'Play-In', quartas: 'Quartas de Final', semis: 'Semifinais', final: 'Final' }[f] || f;
+            return { playin:'Play-In', quartas:'Quartas de Final', semis:'Semifinais', final:'Final' }[f] || f;
         }
 
-        /* ── Classificação ── */
         function calcStandings() {
             const stats = {};
             state.teams.forEach(t => {
@@ -610,13 +570,10 @@
                     name: t.nome,
                     abbr: t.sigla || t.nome?.slice(0,3).toUpperCase() || '?',
                     color: t.cor || t.cores?.[0] || '#555',
-                    pts: 0, played: 0,
-                    wins: 0, draws: 0, losses: 0,
-                    tbWins: 0, tbLosses: 0,
-                    gf: 0, ga: 0,
+                    pts:0, played:0, wins:0, draws:0, losses:0,
+                    tbWins:0, tbLosses:0, gf:0, ga:0,
                 };
             });
-
             state.matches.forEach(m => {
                 if (m.gols_mandante == null || m.gols_visitante == null || m.ao_vivo) return;
                 const h = stats[m.mandante], a = stats[m.visitante];
@@ -624,19 +581,16 @@
                 h.played++; a.played++;
                 h.gf += m.gols_mandante; h.ga += m.gols_visitante;
                 a.gf += m.gols_visitante; a.ga += m.gols_mandante;
-                if (m.gols_mandante > m.gols_visitante) {
+                if (m.gols_mandante > m.gols_visitante)
                     m.tiebreak ? (h.tbWins++, h.pts+=2, a.tbLosses++, a.pts+=1) : (h.wins++, h.pts+=3, a.losses++);
-                } else if (m.gols_mandante < m.gols_visitante) {
+                else if (m.gols_mandante < m.gols_visitante)
                     m.tiebreak ? (a.tbWins++, a.pts+=2, h.tbLosses++, h.pts+=1) : (a.wins++, a.pts+=3, h.losses++);
-                } else {
-                    h.draws++; h.pts++; a.draws++; a.pts++;
-                }
+                else { h.draws++; h.pts++; a.draws++; a.pts++; }
             });
-
-            return Object.values(stats).sort((a, b) => {
+            return Object.values(stats).sort((a,b) => {
                 if (b.pts  !== a.pts)  return b.pts  - a.pts;
                 if (b.wins !== a.wins) return b.wins - a.wins;
-                if ((b.gf-b.ga) !== (a.gf-a.ga)) return (b.gf-b.ga) - (a.gf-a.ga);
+                if ((b.gf-b.ga) !== (a.gf-a.ga)) return (b.gf-b.ga)-(a.gf-a.ga);
                 return b.gf - a.gf;
             });
         }
@@ -645,112 +599,79 @@
            RENDER
         ════════════════════════════════════════ */
         function render() {
-            document.getElementById('app').innerHTML = {
-                mini:   renderMini,
-                corner: renderCorner,
-                full:   renderFull,
-            }[MODE]?.() ?? renderMini();
+            document.getElementById('app').innerHTML =
+                ({ mini: renderMini, corner: renderCorner, full: renderFull }[MODE] ?? renderMini)();
         }
 
-        /* ─── MINI ─── */
+        /* ─── MINI — só placar ─── */
         function renderMini() {
             const lm = state.liveMatch;
             if (!lm) return `<div class="mini-no-live">Nenhum jogo ao vivo</div>`;
 
-            const { h, a }     = scoreOf(lm);
+            const { h, a }       = scoreOf(lm);
             const { home, away } = namesOf(lm);
             const ti = teamInfo(home), ai = teamInfo(away);
 
             return `
-                <div class="mini-wrap">
-                    <div class="mini-side home"
-                         style="background:${gradient(ti.cores)}; text-shadow:0 1px 5px rgba(0,0,0,0.6)">
-                        ${ti.abbr}
+                <div class="mini-card">
+                    <div class="mini-flag" style="background:${ti.color}"></div>
+                    <div class="mini-team-block">
+                        <span class="mini-abbr">${ti.abbr}</span>
+                        <span class="mini-name">${ti.name}</span>
                     </div>
-                    <div class="mini-center">
-                        <div class="mini-score-digits">${h} × ${a}</div>
+                    <div class="mini-center-block">
+                        <div class="mini-digits">${h} × ${a}</div>
                         <div class="live-dot">● AO VIVO</div>
                     </div>
-                    <div class="mini-side away"
-                         style="background:${gradient(ai.cores)}; text-shadow:0 1px 5px rgba(0,0,0,0.6)">
-                        ${ai.abbr}
+                    <div class="mini-team-block right">
+                        <span class="mini-abbr">${ai.abbr}</span>
+                        <span class="mini-name">${ai.name}</span>
                     </div>
+                    <div class="mini-flag" style="background:${ai.color}"></div>
                 </div>
             `;
         }
 
-        /* ─── CORNER ─── */
+        /* ─── CORNER — só tabela ─── */
         function renderCorner() {
-            const lm  = state.liveMatch;
-            const classif = state.config.classificados || 4;
-            const standings = calcStandings().slice(0, MAX_ROWS);
+            const champName = state.config.nome_campeonato || '';
+            const classif   = state.config.classificados  || 4;
 
-            const scoreBlock = (() => {
-                if (!lm) return `
-                    <div class="corner-score" style="background:rgba(0,0,0,0.7)">
-                        <div style="padding:14px;text-align:center;font-size:11px;color:rgba(255,255,255,0.25);font-style:italic">
-                            Aguardando jogo…
-                        </div>
-                    </div>`;
-
-                const { h, a }       = scoreOf(lm);
-                const { home, away } = namesOf(lm);
-                const ti = teamInfo(home), ai = teamInfo(away);
-                const pen = lm._bracket && (lm.pen1 != null || lm.pen2 != null)
-                    ? `<div class="corner-score-footer">Pênaltis: ${lm.pen1 ?? 0} × ${lm.pen2 ?? 0}</div>` : '';
-
-                return `
-                    <div class="corner-score">
-                        <div class="corner-score-teams">
-                            <div class="corner-score-side"
-                                 style="background:${gradient(ti.cores)}">
-                                <div class="corner-score-abbr">${ti.abbr}</div>
-                                <div class="corner-score-name">${ti.name}</div>
-                            </div>
-                            <div class="corner-score-mid">
-                                <div class="corner-score-nums">${h} × ${a}</div>
-                                <div class="corner-live-dot">● AO VIVO</div>
-                            </div>
-                            <div class="corner-score-side"
-                                 style="background:${gradient(ai.cores)}">
-                                <div class="corner-score-abbr">${ai.abbr}</div>
-                                <div class="corner-score-name">${ai.name}</div>
-                            </div>
-                        </div>
-                        ${pen}
-                    </div>
-                `;
-            })();
-
-            const tableLabel = TABLE === 'bracket' ? '🏆 Chaveamento' : '📊 Classificação';
-            const tableRows  = TABLE === 'bracket'
-                ? cornerBracket()
-                : standings.map((t, i) => {
-                    const zone = i < classif ? 'zone-q' : (i < 12 ? 'zone-pi' : '');
-                    return `
-                        <div class="corner-row ${zone}">
-                            <div class="c-swatch" style="background:${t.color}"></div>
-                            <div class="c-pos">${i+1}</div>
-                            <div class="c-abbr" style="color:${t.color}">${t.abbr}</div>
-                            <div style="flex:1"></div>
-                            <div class="c-pj">${t.played}j</div>
-                            <div class="c-pts" style="color:${t.color}">${t.pts}p</div>
-                        </div>
-                    `;
-                  }).join('');
+            const tableLabel = TABLE === 'bracket' ? 'CHAVEAMENTO' : 'CLASSIFICAÇÃO';
+            const rows = TABLE === 'bracket' ? cornerBracket(classif) : cornerStandings(classif);
 
             return `
                 <div class="corner-wrap">
-                    ${scoreBlock}
-                    <div class="corner-table-wrap">
-                        <div class="corner-table-header">${tableLabel}</div>
-                        ${tableRows}
+                    <div class="corner-panel">
+                        <div class="panel-header">
+                            <span class="panel-title">${tableLabel}</span>
+                            ${champName ? `<span class="panel-champ">${champName}</span>` : ''}
+                        </div>
+                        ${rows}
+                        <div class="panel-footer">LIVE RANKING</div>
                     </div>
                 </div>
             `;
         }
 
-        function cornerBracket() {
+        function cornerStandings(classif) {
+            const list = calcStandings().slice(0, MAX_ROWS);
+            if (!list.length) return `<div style="padding:14px;text-align:center;font-size:11px;color:rgba(255,255,255,0.2)">Sem dados</div>`;
+            return list.map((t, i) => {
+                const zone = i < classif ? 'zone-q' : (i < 12 ? 'zone-pi' : '');
+                return `
+                    <div class="c-row ${zone}">
+                        <div class="c-flag" style="background:${t.color}"></div>
+                        <div class="c-pos">${i+1}</div>
+                        <div class="c-name">${t.name}</div>
+                        <div class="c-sub">${t.played}j</div>
+                        <div class="c-pts" style="color:${t.color}">${t.pts}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function cornerBracket(classif) {
             const phases = ['final','semis','quartas','playin'];
             for (const fase of phases) {
                 const ms = state.knockout.filter(m => m.fase === fase && (m.time1 || m.time2));
@@ -759,19 +680,19 @@
                     const ti = teamInfo(m.time1), ai = teamInfo(m.time2);
                     const s1 = m.gols1 ?? '–', s2 = m.gols2 ?? '–';
                     return `
-                        <div class="corner-row">
-                            <div class="c-swatch" style="background:${ti.color}"></div>
-                            <div class="c-abbr" style="color:${ti.color};flex:1">${ti.abbr}</div>
+                        <div class="c-row">
+                            <div class="c-flag" style="background:${ti.color}"></div>
+                            <div class="c-name" style="flex:1">${ti.abbr}</div>
                             <div class="c-pts">${s1}×${s2}</div>
-                            <div class="c-abbr" style="color:${ai.color};flex:1;text-align:right">${ai.abbr}</div>
-                            <div class="c-swatch" style="background:${ai.color}"></div>
+                            <div class="c-name" style="flex:1;text-align:right">${ai.abbr}</div>
+                            <div class="c-flag" style="background:${ai.color}"></div>
                         </div>`;
                 }).join('');
             }
-            return `<div style="padding:12px;font-size:11px;color:rgba(255,255,255,0.25);text-align:center">Bracket vazio</div>`;
+            return `<div style="padding:14px;text-align:center;font-size:11px;color:rgba(255,255,255,0.2)">Bracket vazio</div>`;
         }
 
-        /* ─── FULL ─── */
+        /* ─── FULL — placar + tabela ─── */
         function renderFull() {
             const lm        = state.liveMatch;
             const champName = state.config.nome_campeonato || 'Campeonato';
@@ -779,51 +700,47 @@
 
             const scoreBlock = (() => {
                 if (!lm) return `<div class="full-awaiting">Aguardando jogo ao vivo…</div>`;
-
                 const { h, a }       = scoreOf(lm);
                 const { home, away } = namesOf(lm);
                 const ti = teamInfo(home), ai = teamInfo(away);
                 const pen = lm._bracket && (lm.pen1 != null || lm.pen2 != null)
-                    ? `<div class="full-pen-info">Pênaltis: ${lm.pen1 ?? 0} × ${lm.pen2 ?? 0}</div>` : '';
-
+                    ? `<div class="full-pen">Pênaltis: ${lm.pen1 ?? 0} × ${lm.pen2 ?? 0}</div>` : '';
                 return `
                     <div class="full-scoreboard">
-                        <div class="full-team-side home"
-                             style="background:${gradient(ti.cores)}; justify-content:flex-end">
-                            <div class="full-team-info" style="align-items:flex-end">
-                                <div class="full-team-abbr">${ti.abbr}</div>
-                                <div class="full-team-name">${ti.name}</div>
-                            </div>
+                        <div class="full-flag" style="background:${ti.color}"></div>
+                        <div class="full-team-block right">
+                            <div class="full-team-abbr">${ti.abbr}</div>
+                            <div class="full-team-name">${ti.name}</div>
                         </div>
                         <div class="full-score-mid">
-                            <div class="full-score-nums">
-                                <span class="full-score-n">${h}</span>
-                                <span class="full-score-sep">×</span>
-                                <span class="full-score-n">${a}</span>
+                            <div class="full-digits">
+                                <span>${h}</span>
+                                <span class="full-sep">×</span>
+                                <span>${a}</span>
                             </div>
                             <span class="full-live-badge">🔴 AO VIVO</span>
                             ${pen}
                         </div>
-                        <div class="full-team-side away"
-                             style="background:${gradient(ai.cores)}">
-                            <div class="full-team-info" style="align-items:flex-start">
-                                <div class="full-team-abbr">${ai.abbr}</div>
-                                <div class="full-team-name">${ai.name}</div>
-                            </div>
+                        <div class="full-team-block">
+                            <div class="full-team-abbr">${ai.abbr}</div>
+                            <div class="full-team-name">${ai.name}</div>
                         </div>
+                        <div class="full-flag" style="background:${ai.color}"></div>
                     </div>
                 `;
             })();
 
-            const tableLabel  = TABLE === 'bracket' ? '🏆 Chaveamento' : '📊 Classificação';
+            const tableLabel   = TABLE === 'bracket' ? '🏆 Chaveamento' : '📊 Classificação';
             const tableContent = TABLE === 'bracket' ? fullBracket() : fullStandings(classif);
 
             return `
                 <div class="full-wrap">
-                    <div class="full-champ-label">${champName}</div>
                     ${scoreBlock}
                     <div class="full-table-wrap">
-                        <div class="full-table-header">${tableLabel}</div>
+                        <div class="full-table-header">
+                            <span>${tableLabel}</span>
+                            <span style="color:rgba(255,255,255,0.15);font-size:9px;font-style:italic">${champName}</span>
+                        </div>
                         ${tableContent}
                     </div>
                 </div>
@@ -831,18 +748,17 @@
         }
 
         function fullStandings(classif) {
-            const standings = calcStandings();
-            if (!standings.length) return `<div style="padding:20px;text-align:center;color:rgba(255,255,255,0.2);font-style:italic">Sem dados</div>`;
-
-            const rows = standings.map((t, i) => {
+            const list = calcStandings();
+            if (!list.length) return `<div style="padding:20px;text-align:center;color:rgba(255,255,255,0.15);font-style:italic">Sem dados</div>`;
+            const rows = list.map((t, i) => {
                 const zone = i < classif ? 'zone-q' : (i < 12 ? 'zone-pi' : '');
                 const sg   = t.gf - t.ga;
                 return `
                     <tr class="${zone}">
                         <td class="muted">${i+1}</td>
                         <td class="tleft">
-                            <span class="t-swatch" style="background:${t.color}"></span>
-                            <span class="t-name" style="color:${t.color}">${t.name}</span>
+                            <span class="t-flag" style="background:${t.color}"></span>
+                            <span class="t-name">${t.name}</span>
                         </td>
                         <td class="muted">${t.played}</td>
                         <td>${t.wins}</td>
@@ -850,25 +766,20 @@
                         <td class="muted">${t.losses}</td>
                         <td>${t.gf}</td>
                         <td class="muted">${t.ga}</td>
-                        <td>${sg > 0 ? '+' : ''}${sg}</td>
+                        <td>${sg>0?'+':''}${sg}</td>
                         <td class="t-pts" style="color:${t.color}">${t.pts}</td>
                     </tr>
                 `;
             }).join('');
-
             return `
                 <table>
                     <thead>
                         <tr>
                             <th>#</th><th class="tleft">Time</th>
-                            <th title="Partidas Jogadas">PJ</th>
-                            <th title="Vitórias">V</th>
-                            <th title="Empates">E</th>
-                            <th title="Derrotas">D</th>
-                            <th title="Gols Pró">GP</th>
-                            <th title="Gols Contra">GC</th>
-                            <th title="Saldo">SG</th>
-                            <th title="Pontos">P</th>
+                            <th title="Partidas">PJ</th><th title="Vitórias">V</th>
+                            <th title="Empates">E</th><th title="Derrotas">D</th>
+                            <th title="Gols Pró">GP</th><th title="Gols Contra">GC</th>
+                            <th title="Saldo">SG</th><th title="Pontos">P</th>
                         </tr>
                     </thead>
                     <tbody>${rows}</tbody>
@@ -877,42 +788,36 @@
         }
 
         function fullBracket() {
-            const phases = ['playin','quartas','semis','final'];
             if (!state.knockout.some(m => m.time1 || m.time2))
-                return `<div style="padding:20px;text-align:center;color:rgba(255,255,255,0.2);font-style:italic">Chaveamento não iniciado</div>`;
+                return `<div style="padding:20px;text-align:center;color:rgba(255,255,255,0.15);font-style:italic">Chaveamento não iniciado</div>`;
 
-            const html = phases.map(fase => {
+            const html = ['playin','quartas','semis','final'].map(fase => {
                 const ms = state.knockout.filter(m => m.fase === fase);
                 if (!ms.length) return '';
                 const cols = Math.min(ms.length, 2);
-
                 const cards = ms.map(m => {
                     const ti = teamInfo(m.time1), ai = teamInfo(m.time2);
-                    const hasScore = m.gols1 != null && m.gols2 != null;
-                    const w1 = hasScore && m.gols1 > m.gols2;
-                    const w2 = hasScore && m.gols2 > m.gols1;
-                    const score = hasScore ? `${m.gols1} × ${m.gols2}` : 'vs';
+                    const has = m.gols1 != null && m.gols2 != null;
+                    const w1  = has && m.gols1 > m.gols2;
+                    const w2  = has && m.gols2 > m.gols1;
                     return `
                         <div class="bm">
-                            <div class="bm-team ${w1 ? 'winner' : ''}" style="background:${hex2rgba(ti.color,0.12)}">
-                                <div class="bm-dot" style="background:${ti.color}"></div>
-                                <span style="color:${w1 ? '#68d391' : '#fff'}">${ti.name}</span>
+                            <div class="bm-team" style="background:${hex2rgba(ti.color,0.08)}">
+                                <div class="bm-flag" style="background:${ti.color}"></div>
+                                <span class="${w1?'winner-text':''}">${ti.name}</span>
                             </div>
-                            <div class="bm-score">${score}</div>
-                            <div class="bm-team right ${w2 ? 'winner' : ''}" style="background:${hex2rgba(ai.color,0.12)}">
-                                <span style="color:${w2 ? '#68d391' : '#fff'}">${ai.name}</span>
-                                <div class="bm-dot" style="background:${ai.color}"></div>
+                            <div class="bm-score">${has ? `${m.gols1} × ${m.gols2}` : 'vs'}</div>
+                            <div class="bm-team right" style="background:${hex2rgba(ai.color,0.08)}">
+                                <span class="${w2?'winner-text':''}">${ai.name}</span>
+                                <div class="bm-flag" style="background:${ai.color}"></div>
                             </div>
-                        </div>
-                    `;
+                        </div>`;
                 }).join('');
-
                 return `
                     <div>
                         <div class="bracket-phase-label">${phaseName(fase)}</div>
                         <div class="bracket-grid" style="grid-template-columns:repeat(${cols},1fr)">${cards}</div>
-                    </div>
-                `;
+                    </div>`;
             }).join('');
 
             return `<div class="bracket-wrap">${html}</div>`;
