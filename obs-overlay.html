@@ -216,6 +216,23 @@
         }
 
         /* ══════════════════════════════════════════════
+           MODO TABLE  ?mode=table
+           Só a tabela de classificação, grande.
+           Tamanho OBS sugerido: 860 × 560
+        ══════════════════════════════════════════════ */
+        body.mode-table {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .table-wrap {
+            width: min(860px, 96vw);
+        }
+
+        /* ══════════════════════════════════════════════
            MODO FULL  ?mode=full
            Placar grande + tabela completa.
            Tamanho OBS sugerido: 900 × 700
@@ -474,7 +491,7 @@
 
         /* ── URL params ── */
         const params   = new URLSearchParams(location.search);
-        // mini | corner | full
+        // mini | corner | full | table
         const MODE     = params.get('mode') || 'mini';
         // standings | bracket  (usado nos modos corner e full)
         const TABLE    = params.get('table') || 'standings';
@@ -619,7 +636,7 @@
         ════════════════════════════════════════ */
         function render() {
             document.getElementById('app').innerHTML =
-                ({ mini: renderMini, corner: renderCorner, full: renderFull }[MODE] ?? renderMini)();
+                ({ mini: renderMini, corner: renderCorner, full: renderFull, table: renderTable }[MODE] ?? renderMini)();
         }
 
         /* ─── MINI — só placar ─── */
@@ -880,6 +897,25 @@
             }).join('');
 
             return `<div class="bracket-wrap">${html}</div>`;
+        }
+
+        /* ─── TABLE — só a tabela, sem placar ─── */
+        function renderTable() {
+            const champName = state.config.nome_campeonato || 'Campeonato';
+            const classif   = state.config.classificados  || 4;
+            const tableLabel   = TABLE === 'bracket' ? '🏆 Chaveamento' : '📊 Classificação';
+            const tableContent = TABLE === 'bracket' ? fullBracket() : fullStandings(classif);
+            return `
+                <div class="table-wrap">
+                    <div class="full-table-wrap">
+                        <div class="full-table-header">
+                            <span>${tableLabel}</span>
+                            <span style="color:rgba(255,255,255,0.15);font-size:9px;font-style:italic">${champName}</span>
+                        </div>
+                        ${tableContent}
+                    </div>
+                </div>
+            `;
         }
 
         render();
