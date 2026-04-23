@@ -111,8 +111,8 @@
 
         /* ══════════════════════════════════════════════
            MODO CORNER  ?mode=corner
-           Só a tabela, no canto. Sem placar.
-           Tamanho OBS sugerido: 300 × 520
+           Tabela de classificação estilo live ranking.
+           Tamanho OBS sugerido: 320 × 580
         ══════════════════════════════════════════════ */
         body.mode-corner {
             display: flex;
@@ -120,103 +120,121 @@
             justify-content: flex-start;
             width: 100vw;
             height: 100vh;
-            padding: 12px;
+            padding: 10px;
         }
 
-        .corner-wrap {
-            width: 276px;
-        }
+        .corner-wrap { width: 300px; }
 
         .corner-panel {
-            background: rgba(10,10,14,0.88);
-            border-radius: 10px;
+            background: rgba(10,10,14,0.92);
+            border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+            box-shadow: 0 4px 28px rgba(0,0,0,0.7);
         }
 
-        .panel-header {
-            display: flex;
+        /* cabeçalho das colunas */
+        .c-thead {
+            display: grid;
+            grid-template-columns: 28px 1fr 56px 24px 32px;
             align-items: center;
-            justify-content: space-between;
-            padding: 9px 14px;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding: 7px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            gap: 4px;
         }
 
-        .panel-title {
-            font-size: 9px;
+        .c-th {
+            font-size: 8px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 2.5px;
-            color: rgba(255,255,255,0.35);
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.3);
+            text-align: center;
         }
 
-        .panel-champ {
-            font-size: 9px;
-            color: rgba(255,255,255,0.2);
-            font-style: italic;
-        }
+        .c-th.left { text-align: left; padding-left: 14px; }
+        .c-th.right { text-align: right; }
 
-        /* linha da tabela corner */
+        /* linha de dados */
         .c-row {
-            display: flex;
+            display: grid;
+            grid-template-columns: 28px 1fr 56px 24px 32px;
             align-items: center;
-            padding: 5px 14px 5px 10px;
-            border-top: 1px solid rgba(255,255,255,0.035);
-            gap: 7px;
-            min-height: 34px;
+            padding: 0 10px;
+            gap: 4px;
+            height: 30px;
+            border-top: 1px solid rgba(255,255,255,0.03);
         }
 
-        .c-row.zone-q  { background: rgba(72,187,120,0.06); }
+        .c-row.zone-q  { background: rgba(72,187,120,0.07); }
         .c-row.zone-pi { background: rgba(246,173,85,0.05); }
-
-        /* bandeirinha na tabela */
-        .c-flag {
-            width: 4px;
-            height: 20px;
-            border-radius: 2px;
-            flex-shrink: 0;
-        }
+        .c-row.highlighted { background: rgba(255,255,255,0.07); }
 
         .c-pos {
-            font-size: 10px;
-            color: rgba(255,255,255,0.28);
-            width: 16px;
-            text-align: right;
+            font-size: 11px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.35);
+            text-align: center;
+        }
+
+        /* bandeirinha + nome */
+        .c-team {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            overflow: hidden;
+        }
+
+        .c-flag {
+            width: 3px;
+            height: 16px;
+            border-radius: 1.5px;
             flex-shrink: 0;
-            font-weight: 600;
         }
 
         .c-name {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
-            flex: 1;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
-        .c-pts {
-            font-size: 13px;
-            font-weight: 900;
-            min-width: 26px;
-            text-align: right;
+        /* barrinhas de histórico de resultados */
+        .c-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
         }
 
-        .c-sub {
-            font-size: 9px;
-            color: rgba(255,255,255,0.25);
-            min-width: 28px;
-            text-align: right;
+        .c-bar {
+            width: 8px;
+            height: 12px;
+            border-radius: 2px;
         }
 
-        .panel-footer {
-            padding: 8px 14px;
-            border-top: 1px solid rgba(255,255,255,0.06);
-            font-size: 9px;
+        .c-num {
+            font-size: 11px;
             font-weight: 700;
-            letter-spacing: 2px;
+            text-align: center;
+            color: rgba(255,255,255,0.55);
+        }
+
+        .c-pts-val {
+            font-size: 12px;
+            font-weight: 900;
+            text-align: right;
+        }
+
+        /* rodapé */
+        .panel-footer {
+            padding: 8px 10px;
+            border-top: 1px solid rgba(255,255,255,0.07);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 2.5px;
             text-transform: uppercase;
-            color: rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.3);
         }
 
         /* ══════════════════════════════════════════════
@@ -636,22 +654,39 @@
         function renderCorner() {
             const champName = state.config.nome_campeonato || '';
             const classif   = state.config.classificados  || 4;
-
-            const tableLabel = TABLE === 'bracket' ? 'CHAVEAMENTO' : 'CLASSIFICAÇÃO';
-            const rows = TABLE === 'bracket' ? cornerBracket(classif) : cornerStandings(classif);
+            const rows = TABLE === 'bracket' ? cornerBracket() : cornerStandings(classif);
 
             return `
                 <div class="corner-wrap">
                     <div class="corner-panel">
-                        <div class="panel-header">
-                            <span class="panel-title">${tableLabel}</span>
-                            ${champName ? `<span class="panel-champ">${champName}</span>` : ''}
+                        <div class="c-thead">
+                            <span class="c-th">POS</span>
+                            <span class="c-th left">TIME</span>
+                            <span class="c-th">STATUS</span>
+                            <span class="c-th">V</span>
+                            <span class="c-th right">PTS</span>
                         </div>
                         ${rows}
-                        <div class="panel-footer">LIVE RANKING</div>
+                        <div class="panel-footer">● LIVE RANKING${champName ? ' — ' + champName : ''}</div>
                     </div>
                 </div>
             `;
+        }
+
+        function recentResults(teamName) {
+            /* últimos 5 jogos finalizados desse time */
+            const done = state.matches
+                .filter(m => !m.ao_vivo && m.gols_mandante != null && m.gols_visitante != null
+                    && (m.mandante === teamName || m.visitante === teamName))
+                .slice(-5);
+            return done.map(m => {
+                const isHome = m.mandante === teamName;
+                const gf = isHome ? m.gols_mandante : m.gols_visitante;
+                const ga = isHome ? m.gols_visitante : m.gols_mandante;
+                if (gf > ga) return 'W';
+                if (gf < ga) return 'L';
+                return 'D';
+            });
         }
 
         function cornerStandings(classif) {
@@ -659,13 +694,28 @@
             if (!list.length) return `<div style="padding:14px;text-align:center;font-size:11px;color:rgba(255,255,255,0.2)">Sem dados</div>`;
             return list.map((t, i) => {
                 const zone = i < classif ? 'zone-q' : (i < 12 ? 'zone-pi' : '');
+                const results = recentResults(t.name);
+                /* preenche com barras vazias até ter 5 */
+                const bars = Array(5).fill(null).map((_, j) => {
+                    const r = results[j];
+                    let bg;
+                    if (!r)      bg = 'rgba(255,255,255,0.06)';
+                    else if (r === 'W') bg = t.color;
+                    else if (r === 'D') bg = 'rgba(255,255,255,0.3)';
+                    else                bg = 'rgba(255,255,255,0.1)';
+                    return `<div class="c-bar" style="background:${bg}"></div>`;
+                }).join('');
+
                 return `
                     <div class="c-row ${zone}">
-                        <div class="c-flag" style="background:${t.color}"></div>
                         <div class="c-pos">${i+1}</div>
-                        <div class="c-name">${t.name}</div>
-                        <div class="c-sub">${t.played}j</div>
-                        <div class="c-pts" style="color:${t.color}">${t.pts}</div>
+                        <div class="c-team">
+                            <div class="c-flag" style="background:${t.color}"></div>
+                            <span class="c-name">${t.name}</span>
+                        </div>
+                        <div class="c-status">${bars}</div>
+                        <div class="c-num">${t.wins}</div>
+                        <div class="c-pts-val" style="color:${t.color}">${t.pts}</div>
                     </div>
                 `;
             }).join('');
