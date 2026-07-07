@@ -774,6 +774,16 @@ main {
     border-bottom-color: var(--accent);
 }
 
+.bracket-third-place {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--border);
+}
+
+.bracket-round-title-sm {
+    font-size: 0.7rem;
+}
+
 .bracket-matches {
     display: flex;
     flex-direction: column;

@@ -537,7 +537,7 @@ function updateRoundNav() {
 
 // ─── Render Bracket ───────────────────────────────────────────────────────────
 function renderBracket() {
-    const phases = ['playin', 'quartas', 'semis', 'terceiro', 'final'];
+    const phases = ['playin', 'quartas', 'semis', 'final'];
     const phaseLabels = { playin: 'Play In', quartas: 'Quartas de Final', semis: 'Semifinais', terceiro: 'Disputa de 3° Lugar', final: 'Final' };
     const defaultCounts = { playin: 4, quartas: 4, semis: 2, terceiro: 1, final: 1 };
 
@@ -576,7 +576,6 @@ function renderBracket() {
             <div class="bracket-round-title">${phaseLabels[phase] || phase}</div>
             ${phase === 'playin' ? '<p class="bracket-playin-hint">5°×12° · 6°×11° · 7°×10° · 8°×9°</p>' : ''}
             ${phase === 'quartas' ? '<p class="bracket-playin-hint">1°–4° (direto) vs vencedores Play In (reordenados)</p>' : ''}
-            ${phase === 'terceiro' ? '<p class="bracket-playin-hint">Perdedores das semifinais</p>' : ''}
             <div class="bracket-matches">`;
         if (matches.length === 0) {
             const count = defaultCounts[phase] || 1;
@@ -586,7 +585,26 @@ function renderBracket() {
         } else {
             matches.forEach(m => { html += renderBracketMatch(m); });
         }
-        html += `</div></div>`;
+        html += `</div>`;
+
+        // Disputa de 3° lugar: exibida abaixo da Final, na mesma coluna
+        if (phase === 'final') {
+            const terceiroMatches = state.knockout
+                .filter(m => m.fase === 'terceiro')
+                .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+            html += `<div class="bracket-third-place">
+                <div class="bracket-round-title bracket-round-title-sm">${phaseLabels.terceiro}</div>
+                <p class="bracket-playin-hint">Perdedores das semifinais</p>
+                <div class="bracket-matches">`;
+            if (terceiroMatches.length === 0) {
+                html += renderBracketMatch({ id: null, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null });
+            } else {
+                terceiroMatches.forEach(m => { html += renderBracketMatch(m); });
+            }
+            html += `</div></div>`;
+        }
+
+        html += `</div>`;
     });
 
     $('#bracket-container').innerHTML = html;
