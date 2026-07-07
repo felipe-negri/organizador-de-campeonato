@@ -537,9 +537,9 @@ function updateRoundNav() {
 
 // ─── Render Bracket ───────────────────────────────────────────────────────────
 function renderBracket() {
-    const phases = ['playin', 'quartas', 'semis', 'final'];
-    const phaseLabels = { playin: 'Play In', quartas: 'Quartas de Final', semis: 'Semifinais', final: 'Final' };
-    const defaultCounts = { playin: 4, quartas: 4, semis: 2, final: 1 };
+    const phases = ['playin', 'quartas', 'semis', 'terceiro', 'final'];
+    const phaseLabels = { playin: 'Play In', quartas: 'Quartas de Final', semis: 'Semifinais', terceiro: 'Disputa de 3° Lugar', final: 'Final' };
+    const defaultCounts = { playin: 4, quartas: 4, semis: 2, terceiro: 1, final: 1 };
 
     const finalMatch = state.knockout.find(m => m.fase === 'final');
     if (finalMatch && finalMatch.gols1 != null && finalMatch.gols2 != null && finalMatch.time1 && finalMatch.time2 && !finalMatch.ao_vivo) {
@@ -576,6 +576,7 @@ function renderBracket() {
             <div class="bracket-round-title">${phaseLabels[phase] || phase}</div>
             ${phase === 'playin' ? '<p class="bracket-playin-hint">5°×12° · 6°×11° · 7°×10° · 8°×9°</p>' : ''}
             ${phase === 'quartas' ? '<p class="bracket-playin-hint">1°–4° (direto) vs vencedores Play In (reordenados)</p>' : ''}
+            ${phase === 'terceiro' ? '<p class="bracket-playin-hint">Perdedores das semifinais</p>' : ''}
             <div class="bracket-matches">`;
         if (matches.length === 0) {
             const count = defaultCounts[phase] || 1;
@@ -2177,6 +2178,7 @@ async function initBracket() {
         // Quartas: 1°–4° (direto) vs vencedores do play-in (reordenados)
         ...Array(4).fill(null).map((_, i) => ({ fase: 'quartas', ordem: i, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null })),
         ...Array(2).fill(null).map((_, i) => ({ fase: 'semis', ordem: i, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null })),
+        { fase: 'terceiro', ordem: 0, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null },
         { fase: 'final', ordem: 0, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null },
     ];
     try {
@@ -2302,9 +2304,22 @@ function getMatchWinner(m) {
     return null;
 }
 
-// Advance winners: quartas→semis, semis→final
+function getMatchLoser(m) {
+    if (m.ao_vivo) return null; // live matches have no loser yet
+    if (m.gols1 == null || m.gols2 == null) return null;
+    if (m.gols1 > m.gols2) return m.time2;
+    if (m.gols2 > m.gols1) return m.time1;
+    if (m.pen1 != null && m.pen2 != null) {
+        if (m.pen1 > m.pen2) return m.time2;
+        if (m.pen2 > m.pen1) return m.time1;
+    }
+    return null;
+}
+
+// Advance winners: quartas→semis, semis→final (e semis→terceiro, com os perdedores)
 // Semis: semi0 = winner(quartas0) vs winner(quartas1), semi1 = winner(quartas2) vs winner(quartas3)
 // Final: winner(semi0) vs winner(semi1)
+// Terceiro lugar: loser(semi0) vs loser(semi1)
 async function advanceWinners(fromPhase) {
     const nextPhase = fromPhase === 'quartas' ? 'semis' : 'final';
     const sourceMatches = state.knockout
@@ -2313,8 +2328,6 @@ async function advanceWinners(fromPhase) {
     const destMatches = state.knockout
         .filter(m => m.fase === nextPhase)
         .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
-
-    if (destMatches.length === 0) return;
 
     // Mapping: which source matches feed into which dest slot
     // quartas→semis: [0,1]→semi0, [2,3]→semi1
@@ -2326,17 +2339,37 @@ async function advanceWinners(fromPhase) {
     try {
         const batch = writeBatch(db);
         let updated = false;
-        mappings.forEach((srcIndices, destIdx) => {
-            if (destIdx >= destMatches.length) return;
-            const winners = srcIndices.map(i => i < sourceMatches.length ? getMatchWinner(sourceMatches[i]) : null);
-            const dest = destMatches[destIdx];
-            const newTime1 = winners[0] || '';
-            const newTime2 = winners[1] || '';
-            if (dest.time1 !== newTime1 || dest.time2 !== newTime2) {
-                batch.update(doc(db, 'mata_mata', dest.id), { time1: newTime1, time2: newTime2 });
-                updated = true;
+        if (destMatches.length > 0) {
+            mappings.forEach((srcIndices, destIdx) => {
+                if (destIdx >= destMatches.length) return;
+                const winners = srcIndices.map(i => i < sourceMatches.length ? getMatchWinner(sourceMatches[i]) : null);
+                const dest = destMatches[destIdx];
+                const newTime1 = winners[0] || '';
+                const newTime2 = winners[1] || '';
+                if (dest.time1 !== newTime1 || dest.time2 !== newTime2) {
+                    batch.update(doc(db, 'mata_mata', dest.id), { time1: newTime1, time2: newTime2 });
+                    updated = true;
+                }
+            });
+        }
+
+        // Disputa de 3° lugar: perdedores das semifinais
+        if (fromPhase === 'semis') {
+            const terceiroMatches = state.knockout
+                .filter(m => m.fase === 'terceiro')
+                .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+            if (terceiroMatches.length > 0) {
+                const losers = [0, 1].map(i => i < sourceMatches.length ? getMatchLoser(sourceMatches[i]) : null);
+                const dest = terceiroMatches[0];
+                const newTime1 = losers[0] || '';
+                const newTime2 = losers[1] || '';
+                if (dest.time1 !== newTime1 || dest.time2 !== newTime2) {
+                    batch.update(doc(db, 'mata_mata', dest.id), { time1: newTime1, time2: newTime2 });
+                    updated = true;
+                }
             }
-        });
+        }
+
         if (updated) await batch.commit();
     } catch (e) {
         console.error('Erro ao avançar vencedores:', e);
@@ -2469,7 +2502,7 @@ function setupListeners() {
     }, err => { console.error(err); state.dataReady.matchDates = true; onDataUpdate(); });
 
     onSnapshot(collection(db, 'mata_mata'), snap => {
-        const order = { playin: 0, quartas: 1, semis: 2, final: 3 };
+        const order = { playin: 0, quartas: 1, semis: 2, terceiro: 3, final: 4 };
         const newKnockout = snap.docs
             .map(d => ({ id: d.id, ...d.data() }))
             .sort((a, b) => (order[a.fase] - order[b.fase]) || ((a.ordem || 0) - (b.ordem || 0)));
