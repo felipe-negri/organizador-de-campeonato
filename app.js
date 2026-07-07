@@ -585,29 +585,26 @@ function renderBracket() {
         } else {
             matches.forEach(m => { html += renderBracketMatch(m); });
         }
-        html += `</div>`;
-
-        // Disputa de 3° lugar: exibida abaixo da Final, na mesma coluna
-        if (phase === 'final') {
-            const terceiroMatches = state.knockout
-                .filter(m => m.fase === 'terceiro')
-                .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
-            html += `<div class="bracket-third-place">
-                <div class="bracket-round-title bracket-round-title-sm">${phaseLabels.terceiro}</div>
-                <p class="bracket-playin-hint">Perdedores das semifinais</p>
-                <div class="bracket-matches">`;
-            if (terceiroMatches.length === 0) {
-                html += renderBracketMatch({ id: null, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null });
-            } else {
-                terceiroMatches.forEach(m => { html += renderBracketMatch(m); });
-            }
-            html += `</div></div>`;
-        }
-
-        html += `</div>`;
+        html += `</div></div>`;
     });
 
     $('#bracket-container').innerHTML = html;
+
+    // Disputa de 3° lugar: exibida abaixo de todo o bracket, alinhada com a Final
+    const terceiroMatches = state.knockout
+        .filter(m => m.fase === 'terceiro')
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+    let thirdHtml = `<div class="bracket-round">
+        <div class="bracket-round-title">${phaseLabels.terceiro}</div>
+        <p class="bracket-playin-hint">Perdedores das semifinais</p>
+        <div class="bracket-matches">`;
+    if (terceiroMatches.length === 0) {
+        thirdHtml += renderBracketMatch({ id: null, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null });
+    } else {
+        terceiroMatches.forEach(m => { thirdHtml += renderBracketMatch(m); });
+    }
+    thirdHtml += `</div></div>`;
+    $('#bracket-third-place-container').innerHTML = thirdHtml;
 
     if (hasPerm('bracket.score')) {
         $$('.edit-bracket-btn').forEach(btn => {
