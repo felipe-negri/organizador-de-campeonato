@@ -466,7 +466,8 @@
     <script type="module">
         import { initializeApp }         from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
         import { getFirestore, collection,
-                 doc, onSnapshot }        from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+                 doc, onSnapshot,
+                 connectFirestoreEmulator } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey:            'AIzaSyDKPy8Q8BNGUqGZ-DFIGyjguS7ZD_r9V8Q',
@@ -479,6 +480,12 @@
 
         const db = getFirestore(initializeApp(firebaseConfig));
 
+        // Mesmo hookup de emulador do app.js — ativa em localhost ou IP da rede local
+        if (['localhost', '127.0.0.1'].includes(location.hostname)
+            || /^\d{1,3}(\.\d{1,3}){3}$/.test(location.hostname)) {
+            connectFirestoreEmulator(db, location.hostname, 8080);
+        }
+
         /* ── URL params ── */
         const params   = new URLSearchParams(location.search);
         // mini | corner | full | table
@@ -487,6 +494,38 @@
         const TABLE    = params.get('table') || 'standings';
         const MAX_ROWS = parseInt(params.get('rows') || '12', 10);
         const DEMO     = params.has('demo');
+
+        /* ── Regras de set ──
+           Semis, disputa de 3º lugar e final são melhor de 3 sets: os dois primeiros
+           vão até 21 pontos e o decisivo até 15, sempre com 2 de vantagem e sem teto.
+           gols1/gols2 guardam os sets ganhos; o array `sets` guarda os pontos de cada set.
+           (declarado aqui em cima porque o modo demo já renderiza logo abaixo) */
+        const SET_PHASES  = ['semis','terceiro','final'];
+        const SET_TARGETS = [21, 21, 15];
+        const isSetPhase  = f => SET_PHASES.includes(f);
+
+        function setWinner(p1, p2, i) {
+            const target = SET_TARGETS[i] ?? SET_TARGETS[SET_TARGETS.length-1];
+            if (p1 >= target && p1 - p2 >= 2) return 1;
+            if (p2 >= target && p2 - p1 >= 2) return 2;
+            return 0;
+        }
+
+        function setsOf(m) {
+            return Array.isArray(m?.sets)
+                ? m.sets.slice(0, SET_TARGETS.length).map(s => ({ p1: s?.p1 ?? 0, p2: s?.p2 ?? 0 }))
+                : [];
+        }
+
+        function setsSummary(m) {
+            const list = setsOf(m);
+            let won1 = 0, won2 = 0;
+            list.forEach((s, i) => {
+                const w = setWinner(s.p1, s.p2, i);
+                if (w === 1) won1++; else if (w === 2) won2++;
+            });
+            return { list, won1, won2, text: list.map(s => `${s.p1}-${s.p2}`).join(' · ') };
+        }
 
         document.body.classList.add('mode-' + MODE);
 
@@ -543,7 +582,13 @@
                 { fase:'quartas', ordem:2, time1:'Palmeiras',    time2:'Cruzeiro',     gols1:1, gols2:0 },
                 { fase:'quartas', ordem:3, time1:'Atlético-MG',  time2:'São Paulo',    gols1:null, gols2:null },
                 { fase:'quartas', ordem:4, time1:'Internacional', time2:'Botafogo',    gols1:null, gols2:null },
-                { fase:'semis',   ordem:1, time1:'Flamengo',     time2:'Palmeiras',    gols1:null, gols2:null },
+                // semis/3º/final são melhor de 3 sets — gols1/gols2 = sets ganhos
+                { fase:'semis',   ordem:1, time1:'Flamengo',     time2:'Palmeiras',    gols1:2, gols2:1,
+                  sets:[{p1:21,p2:18},{p1:19,p2:21},{p1:15,p2:13}] },
+                { fase:'semis',   ordem:2, time1:'Corinthians',  time2:'Santos',       gols1:0, gols2:2,
+                  sets:[{p1:18,p2:21},{p1:22,p2:24}] },
+                { fase:'terceiro',ordem:1, time1:'Palmeiras',    time2:'Corinthians',  gols1:null, gols2:null, sets:[] },
+                { fase:'final',   ordem:1, time1:'Flamengo',     time2:'Santos',       gols1:null, gols2:null, sets:[] },
             ];
             // simula gol a cada 8s para demonstrar atualização em tempo real
             let demoTick = 0;
@@ -571,7 +616,7 @@
         });
 
         onSnapshot(collection(db, 'mata_mata'), snap => {
-            const ord = { playin:0, quartas:1, semis:2, final:3 };
+            const ord = { playin:0, quartas:1, semis:2, terceiro:3, final:4 };
             state.knockout = snap.docs
                 .map(d => ({ id: d.id, ...d.data() }))
                 .sort((a, b) => (ord[a.fase]-ord[b.fase]) || ((a.ordem||0)-(b.ordem||0)));
@@ -644,9 +689,12 @@
         }
 
         function scoreOf(m) {
-            return m._bracket
-                ? { h: m.gols1 ?? 0, a: m.gols2 ?? 0 }
-                : { h: m.gols_mandante ?? 0, a: m.gols_visitante ?? 0 };
+            if (!m._bracket) return { h: m.gols_mandante ?? 0, a: m.gols_visitante ?? 0 };
+            if (isSetPhase(m.fase)) {
+                const s = setsSummary(m);
+                if (s.list.length) return { h: s.won1, a: s.won2 };
+            }
+            return { h: m.gols1 ?? 0, a: m.gols2 ?? 0 };
         }
 
         function namesOf(m) {
@@ -656,7 +704,7 @@
         }
 
         function phaseName(f) {
-            return { playin:'Play-In', quartas:'Quartas de Final', semis:'Semifinais', final:'Final' }[f] || f;
+            return { playin:'Play-In', quartas:'Quartas de Final', semis:'Semifinais', terceiro:'Disputa de 3º Lugar', final:'Final' }[f] || f;
         }
 
         function calcStandings() {
@@ -809,13 +857,15 @@
         }
 
         function cornerBracket(classif) {
-            const phases = ['final','semis','quartas','playin'];
+            const phases = ['final','terceiro','semis','quartas','playin'];
             for (const fase of phases) {
                 const ms = state.knockout.filter(m => m.fase === fase && (m.time1 || m.time2));
                 if (!ms.length) continue;
                 return ms.slice(0, MAX_ROWS).map(m => {
                     const ti = teamInfo(m.time1), ai = teamInfo(m.time2);
-                    const s1 = m.gols1 ?? '–', s2 = m.gols2 ?? '–';
+                    const sets = isSetPhase(m.fase) ? setsSummary(m) : null;
+                    const s1 = sets && sets.list.length ? sets.won1 : (m.gols1 ?? '–');
+                    const s2 = sets && sets.list.length ? sets.won2 : (m.gols2 ?? '–');
                     return `
                         <div class="c-row">
                             <div class="c-flag" style="background:${ti.color}"></div>
@@ -840,8 +890,11 @@
                 const { h, a }       = scoreOf(lm);
                 const { home, away } = namesOf(lm);
                 const ti = teamInfo(home), ai = teamInfo(away);
-                const pen = lm._bracket && (lm.pen1 != null || lm.pen2 != null)
-                    ? `<div class="full-pen">Pênaltis: ${lm.pen1 ?? 0} × ${lm.pen2 ?? 0}</div>` : '';
+                const sets = lm._bracket && isSetPhase(lm.fase) ? setsSummary(lm) : null;
+                const pen = sets && sets.list.length
+                    ? `<div class="full-pen">Sets: ${sets.text}</div>`
+                    : (lm._bracket && (lm.pen1 != null || lm.pen2 != null)
+                        ? `<div class="full-pen">Pênaltis: ${lm.pen1 ?? 0} × ${lm.pen2 ?? 0}</div>` : '');
                 return `
                     <div class="full-scoreboard">
                         ${colorPill(ti.cores, 130, true, true)}
@@ -928,22 +981,27 @@
             if (!state.knockout.some(m => m.time1 || m.time2))
                 return `<div style="padding:20px;text-align:center;color:rgba(255,255,255,0.15);font-style:italic">Chaveamento não iniciado</div>`;
 
-            const html = ['playin','quartas','semis','final'].map(fase => {
+            const html = ['playin','quartas','semis','terceiro','final'].map(fase => {
                 const ms = state.knockout.filter(m => m.fase === fase);
                 if (!ms.length) return '';
                 const cols = Math.min(ms.length, 2);
                 const cards = ms.map(m => {
                     const ti = teamInfo(m.time1), ai = teamInfo(m.time2);
-                    const has = m.gols1 != null && m.gols2 != null;
-                    const w1  = has && m.gols1 > m.gols2;
-                    const w2  = has && m.gols2 > m.gols1;
+                    const sets = isSetPhase(m.fase) ? setsSummary(m) : null;
+                    const s1 = sets && sets.list.length ? sets.won1 : m.gols1;
+                    const s2 = sets && sets.list.length ? sets.won2 : m.gols2;
+                    const has = s1 != null && s2 != null;
+                    // em partidas por set só destaca o vencedor quando alguém leva 2 sets
+                    const decided = sets && sets.list.length ? (sets.won1 >= 2 || sets.won2 >= 2) : has;
+                    const w1  = decided && s1 > s2;
+                    const w2  = decided && s2 > s1;
                     return `
                         <div class="bm">
                             <div class="bm-team" style="background:${hex2rgba(ti.color,0.08)}">
                                 <div class="bm-flag" style="background:${ti.color}"></div>
                                 <span class="${w1?'winner-text':''}">${ti.name}</span>
                             </div>
-                            <div class="bm-score">${has ? `${m.gols1} × ${m.gols2}` : 'vs'}</div>
+                            <div class="bm-score">${has ? `${s1} × ${s2}` : 'vs'}</div>
                             <div class="bm-team right" style="background:${hex2rgba(ai.color,0.08)}">
                                 <span class="${w2?'winner-text':''}">${ai.name}</span>
                                 <div class="bm-flag" style="background:${ai.color}"></div>

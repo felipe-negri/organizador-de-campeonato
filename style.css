@@ -1279,6 +1279,88 @@ footer {
     font-size: 1rem;
 }
 
+/* Sets (semifinais, disputa de 3º lugar e final) */
+.sets-edit {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-light);
+}
+.sets-edit-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+.sets-edit-label {
+    flex: 1;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.sets-edit-label em {
+    font-style: normal;
+    opacity: 0.6;
+}
+.sets-edit-row input[type="number"] {
+    width: 64px;
+    text-align: center;
+    font-size: 1rem;
+}
+.sets-edit .hint {
+    margin-top: 0.5rem;
+}
+
+/* Placar set a set no card do bracket */
+.bracket-sets {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-align: center;
+    letter-spacing: 0.02em;
+    border-bottom: 1px solid var(--border-light);
+}
+
+/* Painel de sets do modal ao vivo */
+.live-sets-panel {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-light);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+}
+.live-set-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.live-sets-tally {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.live-sets-tally strong {
+    color: var(--text);
+    font-size: 1rem;
+}
+.live-sets-history {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.35rem;
+}
+.live-set-chip {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+}
+.live-set-chip.current {
+    border-color: var(--success);
+    background: var(--success-bg);
+    color: var(--text);
+    font-weight: 600;
+}
+
 /* Bracket edit grid */
 .bracket-edit-grid {
     display: grid;

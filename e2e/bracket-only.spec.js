@@ -4,7 +4,7 @@ const EMAIL = 'teste@teste.com.br';
 const PASSWORD = 'teste123';
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
-test('Bracket only: play-in → quartas → semis → final', async ({ page }) => {
+test('Bracket only: play-in → quartas → semis → 3º lugar → final', async ({ page }) => {
     await page.goto('/');
     await page.waitForTimeout(2000);
 
@@ -32,10 +32,25 @@ test('Bracket only: play-in → quartas → semis → final', async ({ page }) =
         await delay(1500);
     }
 
+    // Semis, 3º lugar e final são melhor de 3 sets (21/21/15, 2 de vantagem)
+    async function scoreSetMatch(matchId, sets) {
+        await page.evaluate((id) => window.__app.openEditBracketModal(id), matchId);
+        await page.waitForSelector('#edit-bracket-modal:not(.hidden)', { timeout: 5000 });
+        await page.waitForSelector('#edit-bracket-sets:not(.hidden)', { timeout: 5000 });
+        for (let i = 0; i < 3; i++) {
+            const set = sets[i];
+            await page.fill(`#edit-bracket-set${i + 1}-p1`, set ? String(set[0]) : '');
+            await page.fill(`#edit-bracket-set${i + 1}-p2`, set ? String(set[1]) : '');
+        }
+        await page.click('#edit-bracket-save');
+        await page.waitForSelector('#edit-bracket-modal.hidden', { timeout: 10000 }).catch(() => {});
+        await delay(1500);
+    }
+
     const knockoutIds = await page.evaluate(() => {
         const s = window.__app.state;
         const result = {};
-        for (const fase of ['playin', 'quartas', 'semis', 'final']) {
+        for (const fase of ['playin', 'quartas', 'semis', 'terceiro', 'final']) {
             result[fase] = s.knockout
                 .filter(m => m.fase === fase)
                 .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
@@ -61,16 +76,28 @@ test('Bracket only: play-in → quartas → semis → final', async ({ page }) =
     }
     await page.waitForTimeout(2000);
 
-    // Semis
-    const s = [[2, 1], [3, 2]];
+    // Semis — melhor de 3 sets
+    const s = [
+        [[21, 18], [21, 15]],            // 2×0
+        [[19, 21], [22, 20], [15, 13]],  // 2×1, com set 1 vencido por 2 de vantagem acima de 21
+    ];
     for (let i = 0; i < knockoutIds.semis.length; i++) {
-        await scoreBracketMatch(knockoutIds.semis[i], s[i][0], s[i][1]);
+        await scoreSetMatch(knockoutIds.semis[i], s[i]);
         console.log(`Semi ${i+1} ✓`);
     }
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(3000);
 
-    // Final
-    await scoreBracketMatch(knockoutIds.final[0], 3, 2);
+    // Disputa de 3º lugar — preenchida sozinha com os perdedores das semis
+    const terceiroId = knockoutIds.terceiro[0]
+        ?? await page.evaluate(() => window.__app.state.knockout.find(m => m.fase === 'terceiro')?.id);
+    if (terceiroId) {
+        await scoreSetMatch(terceiroId, [[15, 21], [21, 19], [13, 15]]); // 1×2
+        console.log('3º lugar ✓');
+        await page.waitForTimeout(2000);
+    }
+
+    // Final — melhor de 3 sets
+    await scoreSetMatch(knockoutIds.final[0], [[21, 19], [18, 21], [16, 14]]); // 2×1
     console.log('Final ✓');
 
     await page.waitForTimeout(5000);

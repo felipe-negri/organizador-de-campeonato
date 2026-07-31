@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "emulators": "PATH=/usr/lib/jvm/java-21-openjdk/bin:$PATH firebase emulators:start --only firestore,auth --project organizador-de-campeonato",
+    "serve": "npx --prefix e2e serve . -l 4567"
+  },
   "devDependencies": {
     "firebase-tools": "^15.13.0"
   }

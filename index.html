@@ -118,7 +118,7 @@
                     <input type="text" id="edit-bracket-team2" placeholder="Nome do time" list="teams-datalist">
                 </div>
             </div>
-            <div class="score-edit-row" style="margin-top:0.75rem;">
+            <div class="score-edit-row" id="edit-bracket-goals-row" style="margin-top:0.75rem;">
                 <div class="score-edit-team">
                     <span class="score-team-label">Gols Time 1</span>
                     <input type="number" id="edit-bracket-goals1" min="0" max="99" placeholder="0">
@@ -129,7 +129,7 @@
                     <input type="number" id="edit-bracket-goals2" min="0" max="99" placeholder="0">
                 </div>
             </div>
-            <div class="penalty-row">
+            <div class="penalty-row" id="edit-bracket-penalty-row">
                 <span class="penalty-label">Pênaltis (opcional):</span>
                 <div class="score-edit-row">
                     <div class="score-edit-team">
@@ -140,6 +140,29 @@
                         <input type="number" id="edit-bracket-pen2" min="0" max="99" placeholder="-">
                     </div>
                 </div>
+            </div>
+            <!-- Placar por set: semifinais, disputa de 3º lugar e final -->
+            <div class="sets-edit hidden" id="edit-bracket-sets">
+                <span class="penalty-label">Placar por set (melhor de 3):</span>
+                <div class="sets-edit-row">
+                    <span class="sets-edit-label">Set 1 <em>(21)</em></span>
+                    <input type="number" id="edit-bracket-set1-p1" min="0" max="99" placeholder="-">
+                    <span class="score-sep">×</span>
+                    <input type="number" id="edit-bracket-set1-p2" min="0" max="99" placeholder="-">
+                </div>
+                <div class="sets-edit-row">
+                    <span class="sets-edit-label">Set 2 <em>(21)</em></span>
+                    <input type="number" id="edit-bracket-set2-p1" min="0" max="99" placeholder="-">
+                    <span class="score-sep">×</span>
+                    <input type="number" id="edit-bracket-set2-p2" min="0" max="99" placeholder="-">
+                </div>
+                <div class="sets-edit-row">
+                    <span class="sets-edit-label">Set 3 <em>(15, decisivo)</em></span>
+                    <input type="number" id="edit-bracket-set3-p1" min="0" max="99" placeholder="-">
+                    <span class="score-sep">×</span>
+                    <input type="number" id="edit-bracket-set3-p2" min="0" max="99" placeholder="-">
+                </div>
+                <p class="hint">Sets 1 e 2 até 21 pontos, o 3º até 15 — sempre com 2 de vantagem (21×20 continua até 22×20). Quem levar 2 sets vence.</p>
             </div>
             <div class="match-date-row">
                 <label for="edit-bracket-date">📅 Data e hora:</label>
@@ -236,6 +259,12 @@
                         <button class="live-score-btn" id="live-away-plus">+</button>
                     </div>
                 </div>
+            </div>
+            <!-- Painel de sets: semifinais, disputa de 3º lugar e final -->
+            <div class="live-sets-panel hidden" id="live-sets-panel">
+                <div class="live-set-label" id="live-set-label"></div>
+                <div class="live-sets-tally">Sets: <strong id="live-sets-home">0</strong> × <strong id="live-sets-away">0</strong></div>
+                <div class="live-sets-history" id="live-sets-history"></div>
             </div>
             <div class="tiebreak-row">
                 <label class="tiebreak-label">

@@ -20,9 +20,11 @@ import {
     getFirestore, collection, doc,
     setDoc, addDoc, updateDoc, deleteDoc,
     onSnapshot, writeBatch, getDocs,
+    connectFirestoreEmulator,
 } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js';
 import {
     getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword,
+    connectAuthEmulator,
 } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js';
 
 const firebaseConfig = {
@@ -37,6 +39,17 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
+
+// Rodando via `firebase emulators:start` / localhost / IP da rede local: usa
+// Firestore e Auth locais, isolados de produção — nunca conecta ao emulador
+// quando publicado no GitHub Pages, porque lá o hostname é sempre um domínio.
+const isLocalDevHost = ['localhost', '127.0.0.1'].includes(location.hostname)
+    || /^\d{1,3}(\.\d{1,3}){3}$/.test(location.hostname);
+if (isLocalDevHost) {
+    connectFirestoreEmulator(db, location.hostname, 8080);
+    connectAuthEmulator(auth, `http://${location.hostname}:9099`, { disableWarnings: true });
+    console.info('🧪 Emuladores locais do Firebase ativos (Firestore :8080, Auth :9099)');
+}
 
 // ─── Image Crop ───────────────────────────────────────────────────────────────
 const CROP_SIZE = 300;
@@ -137,6 +150,8 @@ const state = {
     editingBracket: null,
     editingLiveMatch: null,
     editingLiveType: null, // 'match' or 'bracket'
+    editingLiveSets: null, // array de sets quando a partida ao vivo é por set
+    editingLiveSetIndex: 0,
     editingTeamId: null,
     userEmail: null,
     userRole: null,
@@ -175,6 +190,98 @@ function hasPerm(perm) {
 
 function hasAnyPerm(...perms) {
     return perms.some(p => state.userPermissions.includes(p));
+}
+
+// ─── Regras de set (semifinais, disputa de 3º lugar e final) ──────────────────
+// Essas três partidas são melhor de 3 sets, no estilo do tênis: os dois primeiros
+// sets vão até 21 pontos e o set decisivo até 15. Em qualquer set é preciso abrir
+// 2 pontos de vantagem para fechar, sem teto — 21×19 fecha, 21×20 segue até
+// 22×20, 23×21, e por aí vai. Quem levar 2 sets vence a partida.
+const SET_PHASES = ['semis', 'terceiro', 'final'];
+const SET_TARGETS = [21, 21, 15];
+const SET_ADVANTAGE = 2;
+const SETS_TO_WIN = 2;
+const MAX_SETS = SET_TARGETS.length;
+
+function isSetPhase(fase) {
+    return SET_PHASES.includes(fase);
+}
+
+function setTarget(index) {
+    return SET_TARGETS[index] ?? SET_TARGETS[SET_TARGETS.length - 1];
+}
+
+// Vencedor de um set: 1, 2 ou 0 (ainda em disputa)
+function setWinner(p1, p2, index) {
+    const target = setTarget(index);
+    if (p1 >= target && p1 - p2 >= SET_ADVANTAGE) return 1;
+    if (p2 >= target && p2 - p1 >= SET_ADVANTAGE) return 2;
+    return 0;
+}
+
+function normalizeSets(sets) {
+    if (!Array.isArray(sets)) return [];
+    return sets.slice(0, MAX_SETS).map(s => ({
+        p1: Math.max(0, parseInt(s?.p1) || 0),
+        p2: Math.max(0, parseInt(s?.p2) || 0),
+    }));
+}
+
+// Resumo da partida: sets ganhos, se já acabou e qual set está em disputa
+function summarizeSets(sets) {
+    const list = normalizeSets(sets);
+    let won1 = 0, won2 = 0, openIndex = -1;
+    list.forEach((s, i) => {
+        const w = setWinner(s.p1, s.p2, i);
+        if (w === 1) won1++;
+        else if (w === 2) won2++;
+        else if (openIndex < 0) openIndex = i;
+    });
+    if (openIndex < 0) openIndex = list.length;
+    const finished = won1 >= SETS_TO_WIN || won2 >= SETS_TO_WIN;
+    return {
+        list,
+        won1,
+        won2,
+        finished,
+        winner: finished ? (won1 > won2 ? 1 : 2) : 0,
+        currentSet: finished ? null : Math.min(openIndex, MAX_SETS - 1),
+    };
+}
+
+function formatSets(sets) {
+    return normalizeSets(sets).map(s => `${s.p1}-${s.p2}`).join(' · ');
+}
+
+// Valida um placar por sets digitado à mão; devolve a mensagem de erro ou null
+function validateSets(list) {
+    let won1 = 0, won2 = 0;
+    for (let i = 0; i < list.length; i++) {
+        if (won1 >= SETS_TO_WIN || won2 >= SETS_TO_WIN) {
+            return `A partida já estava decidida em ${won1}×${won2} nos sets — apague o Set ${i + 1}.`;
+        }
+        const { p1, p2 } = list[i];
+        const target = setTarget(i);
+        const w = setWinner(p1, p2, i);
+        if (!w) {
+            // só o último set pode estar em andamento
+            if (i < list.length - 1) return `Set ${i + 1} incompleto: são ${target} pontos com 2 de vantagem.`;
+            continue;
+        }
+        if (Math.max(p1, p2) > target && Math.abs(p1 - p2) !== SET_ADVANTAGE) {
+            return `Set ${i + 1} inválido: passando de ${target}, o set fecha assim que alguém abre 2 pontos.`;
+        }
+        if (w === 1) won1++; else won2++;
+    }
+    return null;
+}
+
+// Placar a exibir para uma partida do mata-mata: em partidas por set o
+// gols1/gols2 guarda os sets ganhos, e o set em disputa vem do array `sets`
+function bracketCurrentSetScore(m) {
+    const s = summarizeSets(m.sets);
+    const cur = s.list[s.list.length - 1];
+    return cur ? { h: cur.p1, a: cur.p2 } : { h: 0, a: 0 };
 }
 
 // ─── DOM helpers ──────────────────────────────────────────────────────────────
@@ -359,7 +466,11 @@ function renderStandings() {
     // Also check knockout for live matches
     state.knockout.forEach(m => {
         if (!m.ao_vivo) return;
-        const info = { mandante: m.time1, visitante: m.time2, gols_mandante: m.gols1 || 0, gols_visitante: m.gols2 || 0 };
+        // Nas partidas por set o popover mostra os pontos do set em disputa
+        const live = isSetPhase(m.fase)
+            ? bracketCurrentSetScore(m)
+            : { h: m.gols1 || 0, a: m.gols2 || 0 };
+        const info = { mandante: m.time1, visitante: m.time2, gols_mandante: live.h, gols_visitante: live.a };
         if (m.time1) liveMatchByTeam[m.time1] = info;
         if (m.time2) liveMatchByTeam[m.time2] = info;
     });
@@ -537,19 +648,15 @@ function updateRoundNav() {
 
 // ─── Render Bracket ───────────────────────────────────────────────────────────
 function renderBracket() {
+    // 'terceiro' fica de fora daqui de propósito: é renderizada à parte, abaixo do
+    // bracket, empilhada sob a Final (ver bloco #bracket-third-place-container)
     const phases = ['playin', 'quartas', 'semis', 'final'];
     const phaseLabels = { playin: 'Play In', quartas: 'Quartas de Final', semis: 'Semifinais', terceiro: 'Disputa de 3° Lugar', final: 'Final' };
     const defaultCounts = { playin: 4, quartas: 4, semis: 2, terceiro: 1, final: 1 };
 
     const finalMatch = state.knockout.find(m => m.fase === 'final');
-    if (finalMatch && finalMatch.gols1 != null && finalMatch.gols2 != null && finalMatch.time1 && finalMatch.time2 && !finalMatch.ao_vivo) {
-        let champion = null;
-        if (finalMatch.gols1 > finalMatch.gols2) champion = finalMatch.time1;
-        else if (finalMatch.gols2 > finalMatch.gols1) champion = finalMatch.time2;
-        else if (finalMatch.pen1 != null && finalMatch.pen2 != null) {
-            if (finalMatch.pen1 > finalMatch.pen2) champion = finalMatch.time1;
-            else if (finalMatch.pen2 > finalMatch.pen1) champion = finalMatch.time2;
-        }
+    if (finalMatch && finalMatch.time1 && finalMatch.time2 && !finalMatch.ao_vivo) {
+        const champion = getMatchWinner(finalMatch);
         if (champion) {
             $('#champion-banner').classList.remove('hidden');
             $('#champion-name').textContent = champion;
@@ -576,11 +683,12 @@ function renderBracket() {
             <div class="bracket-round-title">${phaseLabels[phase] || phase}</div>
             ${phase === 'playin' ? '<p class="bracket-playin-hint">5°×12° · 6°×11° · 7°×10° · 8°×9°</p>' : ''}
             ${phase === 'quartas' ? '<p class="bracket-playin-hint">1°–4° (direto) vs vencedores Play In (reordenados)</p>' : ''}
+            ${isSetPhase(phase) ? `<p class="bracket-playin-hint">Melhor de 3 sets · ${SET_TARGETS[0]}/${SET_TARGETS[1]}/${SET_TARGETS[2]} pontos · 2 de vantagem</p>` : ''}
             <div class="bracket-matches">`;
         if (matches.length === 0) {
             const count = defaultCounts[phase] || 1;
             for (let i = 0; i < count; i++) {
-                html += renderBracketMatch({ id: null, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null });
+                html += renderBracketMatch({ id: null, fase: phase, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null });
             }
         } else {
             matches.forEach(m => { html += renderBracketMatch(m); });
@@ -597,9 +705,10 @@ function renderBracket() {
     let thirdHtml = `<div class="bracket-round">
         <div class="bracket-round-title">${phaseLabels.terceiro}</div>
         <p class="bracket-playin-hint">Perdedores das semifinais</p>
+        <p class="bracket-playin-hint">Melhor de 3 sets · ${SET_TARGETS[0]}/${SET_TARGETS[1]}/${SET_TARGETS[2]} pontos · 2 de vantagem</p>
         <div class="bracket-matches">`;
     if (terceiroMatches.length === 0) {
-        thirdHtml += renderBracketMatch({ id: null, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null });
+        thirdHtml += renderBracketMatch({ id: null, fase: 'terceiro', time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null });
     } else {
         terceiroMatches.forEach(m => { thirdHtml += renderBracketMatch(m); });
     }
@@ -626,19 +735,30 @@ function renderBracket() {
 function renderBracketMatch(m) {
     const isLive = !!m.ao_vivo;
     const played = m.gols1 != null && m.gols2 != null && !isLive;
+    const setPhase = isSetPhase(m.fase);
+    const sets = setPhase ? summarizeSets(m.sets) : null;
+
     let winner = null;
-    if (played && m.time1 && m.time2) {
-        if (m.gols1 > m.gols2) winner = 1;
-        else if (m.gols2 > m.gols1) winner = 2;
-        else if (m.pen1 != null && m.pen2 != null) {
-            if (m.pen1 > m.pen2) winner = 1;
-            else if (m.pen2 > m.pen1) winner = 2;
-        }
+    if (m.time1 && m.time2) {
+        const winnerName = getMatchWinner(m);
+        if (winnerName) winner = winnerName === m.time1 ? 1 : 2;
     }
     const t1c = !m.time1 ? 'tbd' : (winner === 1 ? 'winner' : winner === 2 ? 'loser' : '');
     const t2c = !m.time2 ? 'tbd' : (winner === 2 ? 'winner' : winner === 1 ? 'loser' : '');
-    const s1 = (played || isLive) ? String(m.gols1 ?? 0) + (m.pen1 != null ? ` (${m.pen1})` : '') : '';
-    const s2 = (played || isLive) ? String(m.gols2 ?? 0) + (m.pen2 != null ? ` (${m.pen2})` : '') : '';
+
+    let s1 = '', s2 = '', setsLine = '';
+    if (setPhase && sets.list.length > 0) {
+        // O placar principal são os sets ganhos; a linha extra abre set a set
+        s1 = String(sets.won1);
+        s2 = String(sets.won2);
+        // Mostra em qual set a partida está sempre que ainda não foi decidida —
+        // não só ao vivo, também quando o admin preencheu os sets pelo ✏️ editar
+        const label = sets.currentSet != null ? `Set ${sets.currentSet + 1}: ` : '';
+        setsLine = `<div class="bracket-sets">${label}${formatSets(sets.list)}</div>`;
+    } else if (played || isLive) {
+        s1 = String(m.gols1 ?? 0) + (m.pen1 != null ? ` (${m.pen1})` : '');
+        s2 = String(m.gols2 ?? 0) + (m.pen2 != null ? ` (${m.pen2})` : '');
+    }
     let editBtn = '';
     if (isLive && hasAnyPerm('bracket.live', 'bracket.score') && m.id) {
         editBtn = `<button class="live-bracket-manage-btn btn-live-start" data-id="${m.id}" title="Gerenciar ao vivo"><span class="live-dot live-dot-sm"></span> Gerenciar</button>`;
@@ -661,6 +781,7 @@ function renderBracketMatch(m) {
             <span class="bracket-team-name">${m.time2 || 'A definir'}</span>
             <span class="bracket-team-score">${s2}</span>
         </div>
+        ${setsLine}
         ${m.data_hora ? `<div class="match-date-info">📅 ${formatDate(m.data_hora)}</div>` : ''}
         ${editBtn}
     </div>`;
@@ -1309,6 +1430,20 @@ function openEditBracketModal(matchId) {
     $('#edit-bracket-pen1').value = m.pen1 != null ? m.pen1 : '';
     $('#edit-bracket-pen2').value = m.pen2 != null ? m.pen2 : '';
     $('#edit-bracket-date').value = m.data_hora || '';
+
+    // Semis, 3º lugar e final: placar por set no lugar de gols + pênaltis
+    const setPhase = isSetPhase(m.fase);
+    $('#edit-bracket-sets').classList.toggle('hidden', !setPhase);
+    $('#edit-bracket-goals-row').classList.toggle('hidden', setPhase);
+    $('#edit-bracket-penalty-row').classList.toggle('hidden', setPhase);
+    if (setPhase) {
+        const sets = normalizeSets(m.sets);
+        for (let i = 0; i < MAX_SETS; i++) {
+            $(`#edit-bracket-set${i + 1}-p1`).value = sets[i] ? sets[i].p1 : '';
+            $(`#edit-bracket-set${i + 1}-p2`).value = sets[i] ? sets[i].p2 : '';
+        }
+    }
+
     $('#edit-bracket-modal').classList.remove('hidden');
     $('#edit-bracket-team1').focus();
 }
@@ -1325,16 +1460,38 @@ async function saveEditBracket() {
     const g2 = $('#edit-bracket-goals2').value;
     const p1 = $('#edit-bracket-pen1').value;
     const p2 = $('#edit-bracket-pen2').value;
+
+    const payload = {
+        time1: $('#edit-bracket-team1').value.trim(),
+        time2: $('#edit-bracket-team2').value.trim(),
+        gols1: g1 !== '' ? parseInt(g1) : null,
+        gols2: g2 !== '' ? parseInt(g2) : null,
+        pen1: p1 !== '' ? parseInt(p1) : null,
+        pen2: p2 !== '' ? parseInt(p2) : null,
+        data_hora: $('#edit-bracket-date').value || null,
+    };
+
+    if (isSetPhase(m.fase)) {
+        const sets = [];
+        for (let i = 0; i < MAX_SETS; i++) {
+            const a = $(`#edit-bracket-set${i + 1}-p1`).value;
+            const b = $(`#edit-bracket-set${i + 1}-p2`).value;
+            if (a === '' && b === '') continue;
+            sets.push({ p1: Math.max(0, parseInt(a) || 0), p2: Math.max(0, parseInt(b) || 0) });
+        }
+        const err = validateSets(sets);
+        if (err) { showToast(err, 'error', 6000); return; }
+        const summary = summarizeSets(sets);
+        payload.sets = summary.list;
+        // gols1/gols2 guardam os sets ganhos, que é o placar da partida
+        payload.gols1 = sets.length ? summary.won1 : null;
+        payload.gols2 = sets.length ? summary.won2 : null;
+        payload.pen1 = null;
+        payload.pen2 = null;
+    }
+
     try {
-        await updateDoc(doc(db, 'mata_mata', m.id), {
-            time1: $('#edit-bracket-team1').value.trim(),
-            time2: $('#edit-bracket-team2').value.trim(),
-            gols1: g1 !== '' ? parseInt(g1) : null,
-            gols2: g2 !== '' ? parseInt(g2) : null,
-            pen1: p1 !== '' ? parseInt(p1) : null,
-            pen2: p2 !== '' ? parseInt(p2) : null,
-            data_hora: $('#edit-bracket-date').value || null,
-        });
+        await updateDoc(doc(db, 'mata_mata', m.id), payload);
         closeEditBracketModal();
         showToast('Partida salva!');
         // Auto-reseed quartas when a play-in match is saved with a result
@@ -1413,11 +1570,14 @@ async function startLiveMatch(matchId, type) {
     const collectionName = type === 'bracket' ? 'mata_mata' : 'jogos';
     const goalsHome = type === 'bracket' ? 'gols1' : 'gols_mandante';
     const goalsAway = type === 'bracket' ? 'gols2' : 'gols_visitante';
+    const match = type === 'bracket' ? state.knockout.find(x => x.id === matchId) : null;
     try {
         await updateDoc(doc(db, collectionName, matchId), {
             ao_vivo: true,
             [goalsHome]: 0,
             [goalsAway]: 0,
+            // partidas por set começam já com o primeiro set aberto
+            ...(match && isSetPhase(match.fase) ? { sets: [{ p1: 0, p2: 0 }] } : {}),
         });
         showToast('Jogo ao vivo iniciado!', 'success');
     } catch (e) {
@@ -1448,11 +1608,22 @@ function openLiveScoreModal(matchId, type) {
 
     $('#live-home-name').textContent = homeName;
     $('#live-away-name').textContent = awayName;
-    $('#live-home-score').textContent = homeGoals;
-    $('#live-away-score').textContent = awayGoals;
     $('#live-tiebreak').checked = !!(type === 'match' ? m.tiebreak : false);
     // Show/hide tiebreak only for group matches
     $('#live-tiebreak').closest('.tiebreak-row').classList.toggle('hidden', type === 'bracket');
+
+    // Semis, 3º lugar e final: os +/− marcam pontos do set em disputa
+    const setPhase = type === 'bracket' && isSetPhase(m.fase);
+    $('#live-sets-panel').classList.toggle('hidden', !setPhase);
+    if (setPhase) {
+        state.editingLiveSets = normalizeSets(m.sets);
+        renderLiveSets();
+    } else {
+        state.editingLiveSets = null;
+        $('#live-home-score').textContent = homeGoals;
+        $('#live-away-score').textContent = awayGoals;
+    }
+
     $('#live-score-modal').classList.remove('hidden');
 }
 
@@ -1460,6 +1631,76 @@ function closeLiveScoreModal() {
     $('#live-score-modal').classList.add('hidden');
     state.editingLiveMatch = null;
     state.editingLiveType = null;
+    state.editingLiveSets = null;
+}
+
+// Reorganiza os sets do modal ao vivo: fecha o set que bateu a regra, abre o
+// próximo e descarta o que sobrar caso a partida já esteja decidida
+function normalizeLiveSets() {
+    let sets = normalizeSets(state.editingLiveSets);
+    if (sets.length === 0) sets = [{ p1: 0, p2: 0 }];
+
+    let won1 = 0, won2 = 0, cut = sets.length;
+    for (let i = 0; i < sets.length; i++) {
+        if (won1 >= SETS_TO_WIN || won2 >= SETS_TO_WIN) { cut = i; break; }
+        const w = setWinner(sets[i].p1, sets[i].p2, i);
+        if (w === 1) won1++;
+        else if (w === 2) won2++;
+    }
+    sets = sets.slice(0, cut);
+
+    const decided = won1 >= SETS_TO_WIN || won2 >= SETS_TO_WIN;
+    const lastIdx = sets.length - 1;
+    if (!decided && sets.length < MAX_SETS && setWinner(sets[lastIdx].p1, sets[lastIdx].p2, lastIdx)) {
+        sets.push({ p1: 0, p2: 0 });
+    }
+
+    state.editingLiveSets = sets;
+    state.editingLiveSetIndex = sets.length - 1;
+    return { sets, won1, won2, decided };
+}
+
+function renderLiveSets() {
+    const { sets, won1, won2, decided } = normalizeLiveSets();
+    const idx = state.editingLiveSetIndex;
+    const current = sets[idx];
+
+    $('#live-home-score').textContent = current.p1;
+    $('#live-away-score').textContent = current.p2;
+    $('#live-sets-home').textContent = won1;
+    $('#live-sets-away').textContent = won2;
+    $('#live-set-label').textContent = decided
+        ? `Partida decidida — ${won1} × ${won2} em sets`
+        : `Set ${idx + 1} — até ${setTarget(idx)} pontos, com 2 de vantagem`;
+    $('#live-sets-history').innerHTML = sets.map((s, i) => {
+        const closed = setWinner(s.p1, s.p2, i) !== 0;
+        const cls = `live-set-chip${!closed && i === idx ? ' current' : ''}`;
+        return `<span class="${cls}">Set ${i + 1}: ${s.p1}-${s.p2}</span>`;
+    }).join('');
+}
+
+// +/− do modal ao vivo: pontos do set em disputa ou o placar simples
+function adjustLiveScore(side, delta) {
+    if (state.editingLiveSets) {
+        const set = state.editingLiveSets[state.editingLiveSetIndex];
+        if (!set) return;
+        // Set recém-aberto e zerado: o − volta para o set anterior e desfaz o
+        // ponto que o fechou, para dar como corrigir um clique errado
+        if (delta < 0 && set.p1 === 0 && set.p2 === 0 && state.editingLiveSets.length > 1) {
+            state.editingLiveSets.pop();
+            const prev = state.editingLiveSets[state.editingLiveSets.length - 1];
+            if (side === 1) prev.p1 = Math.max(0, prev.p1 - 1);
+            else prev.p2 = Math.max(0, prev.p2 - 1);
+            renderLiveSets();
+            return;
+        }
+        if (side === 1) set.p1 = Math.max(0, set.p1 + delta);
+        else set.p2 = Math.max(0, set.p2 + delta);
+        renderLiveSets();
+        return;
+    }
+    const el = side === 1 ? $('#live-home-score') : $('#live-away-score');
+    el.textContent = Math.max(0, (parseInt(el.textContent) || 0) + delta);
 }
 
 async function saveLiveScore() {
@@ -1467,20 +1708,31 @@ async function saveLiveScore() {
     const type = state.editingLiveType;
     if (!m) return;
 
-    const homeGoals = parseInt($('#live-home-score').textContent) || 0;
-    const awayGoals = parseInt($('#live-away-score').textContent) || 0;
-
     const collectionName = type === 'bracket' ? 'mata_mata' : 'jogos';
-    const update = type === 'bracket'
-        ? { gols1: homeGoals, gols2: awayGoals }
-        : { gols_mandante: homeGoals, gols_visitante: awayGoals, tiebreak: $('#live-tiebreak').checked };
+    const update = buildLiveScoreUpdate(type);
 
     try {
         await updateDoc(doc(db, collectionName, m.id), update);
-        showToast('Placar atualizado!');
+        const sum = state.editingLiveSets ? summarizeSets(state.editingLiveSets) : null;
+        showToast(sum && sum.finished
+            ? `Placar salvo — partida decidida em ${sum.won1} × ${sum.won2} nos sets. Encerre o jogo para confirmar.`
+            : 'Placar atualizado!');
     } catch (e) {
         showToast('Erro ao salvar: ' + e.message, 'error');
     }
+}
+
+// Monta o update do placar ao vivo; em partidas por set, gols1/gols2 são sets ganhos
+function buildLiveScoreUpdate(type) {
+    if (state.editingLiveSets) {
+        const sum = summarizeSets(state.editingLiveSets);
+        return { sets: sum.list, gols1: sum.won1, gols2: sum.won2 };
+    }
+    const homeGoals = parseInt($('#live-home-score').textContent) || 0;
+    const awayGoals = parseInt($('#live-away-score').textContent) || 0;
+    return type === 'bracket'
+        ? { gols1: homeGoals, gols2: awayGoals }
+        : { gols_mandante: homeGoals, gols_visitante: awayGoals, tiebreak: $('#live-tiebreak').checked };
 }
 
 async function endLiveMatch() {
@@ -1488,15 +1740,15 @@ async function endLiveMatch() {
     const type = state.editingLiveType;
     if (!m) return;
 
-    if (!confirm('Encerrar este jogo? O placar atual será o placar final.')) return;
-
-    const homeGoals = parseInt($('#live-home-score').textContent) || 0;
-    const awayGoals = parseInt($('#live-away-score').textContent) || 0;
+    // Numa partida por set, avisa se ninguém fechou 2 sets ainda
+    if (state.editingLiveSets) {
+        const sum = summarizeSets(state.editingLiveSets);
+        if (!sum.finished && !confirm(`Nenhum time fechou ${SETS_TO_WIN} sets (está ${sum.won1} × ${sum.won2}). Encerrar mesmo assim?`)) return;
+        if (sum.finished && !confirm(`Encerrar? Placar final: ${sum.won1} × ${sum.won2} em sets (${formatSets(sum.list)}).`)) return;
+    } else if (!confirm('Encerrar este jogo? O placar atual será o placar final.')) return;
 
     const collectionName = type === 'bracket' ? 'mata_mata' : 'jogos';
-    const update = type === 'bracket'
-        ? { ao_vivo: false, gols1: homeGoals, gols2: awayGoals }
-        : { ao_vivo: false, gols_mandante: homeGoals, gols_visitante: awayGoals, tiebreak: $('#live-tiebreak').checked };
+    const update = { ao_vivo: false, ...buildLiveScoreUpdate(type) };
 
     try {
         await updateDoc(doc(db, collectionName, m.id), update);
@@ -1518,15 +1770,22 @@ function notifyLiveScoreChanges(oldList, newList, type) {
     oldList.forEach(m => { oldMap[m.id] = m; });
 
     newList.forEach(m => {
+        const setPhase = type === 'bracket' && isSetPhase(m.fase);
+
         if (!m.ao_vivo) {
             // Check if match just ended (was live, now isn't)
             const old = oldMap[m.id];
             if (old && old.ao_vivo) {
                 const home = type === 'bracket' ? m.time1 : m.mandante;
                 const away = type === 'bracket' ? m.time2 : m.visitante;
-                const gh = type === 'bracket' ? (m.gols1 ?? 0) : (m.gols_mandante ?? 0);
-                const ga = type === 'bracket' ? (m.gols2 ?? 0) : (m.gols_visitante ?? 0);
-                showGoalToast(`🏁🏁 Fim de jogo! ${home} ${gh} × ${ga} ${away} ⚽🏆`, 'end');
+                if (setPhase) {
+                    const s = summarizeSets(m.sets);
+                    showGoalToast(`🏁🏁 Fim de jogo! ${home} ${s.won1} × ${s.won2} ${away} em sets (${formatSets(s.list)}) 🏆`, 'end');
+                } else {
+                    const gh = type === 'bracket' ? (m.gols1 ?? 0) : (m.gols_mandante ?? 0);
+                    const ga = type === 'bracket' ? (m.gols2 ?? 0) : (m.gols_visitante ?? 0);
+                    showGoalToast(`🏁🏁 Fim de jogo! ${home} ${gh} × ${ga} ${away} ⚽🏆`, 'end');
+                }
             }
             return;
         }
@@ -1535,20 +1794,55 @@ function notifyLiveScoreChanges(oldList, newList, type) {
 
         const home = type === 'bracket' ? m.time1 : m.mandante;
         const away = type === 'bracket' ? m.time2 : m.visitante;
+
+        if (!old.ao_vivo && m.ao_vivo) {
+            // Match just started
+            showGoalToast(`▶️🔴 Começou! ${home} vs ${away} 🏐🔥`, 'start');
+            return;
+        }
+
+        if (setPhase) {
+            notifySetChanges(old, m, home, away);
+            return;
+        }
+
         const newHome = type === 'bracket' ? (m.gols1 ?? 0) : (m.gols_mandante ?? 0);
         const newAway = type === 'bracket' ? (m.gols2 ?? 0) : (m.gols_visitante ?? 0);
         const oldHome = type === 'bracket' ? (old.gols1 ?? 0) : (old.gols_mandante ?? 0);
         const oldAway = type === 'bracket' ? (old.gols2 ?? 0) : (old.gols_visitante ?? 0);
 
-        if (!old.ao_vivo && m.ao_vivo) {
-            // Match just started
-            showGoalToast(`▶️🔴 Começou! ${home} vs ${away} 🏐🔥`, 'start');
-        } else if (newHome > oldHome) {
+        if (newHome > oldHome) {
             showGoalToast(`⚽🔥 GOL! ${home}! ${home} ${newHome} × ${newAway} ${away}`, 'goal');
         } else if (newAway > oldAway) {
             showGoalToast(`⚽🔥 GOL! ${away}! ${home} ${newHome} × ${newAway} ${away}`, 'goal');
         }
     });
+}
+
+// Avisos das partidas por set: ponto marcado e set fechado
+function notifySetChanges(oldMatch, newMatch, home, away) {
+    const before = summarizeSets(oldMatch.sets);
+    const after = summarizeSets(newMatch.sets);
+
+    if (after.won1 > before.won1 || after.won2 > before.won2) {
+        const setIndex = after.won1 + after.won2 - 1;
+        const scorer = after.won1 > before.won1 ? home : away;
+        const closed = after.list[setIndex];
+        const placar = closed ? ` (${closed.p1}-${closed.p2})` : '';
+        showGoalToast(`🎾 SET! ${scorer} leva o ${setIndex + 1}º set${placar} — ${after.won1} × ${after.won2} em sets`, 'goal');
+        return;
+    }
+
+    const oldCur = before.list[before.list.length - 1];
+    const newCur = after.list[after.list.length - 1];
+    if (!oldCur || !newCur || before.list.length !== after.list.length) return;
+
+    const idx = after.list.length - 1;
+    if (newCur.p1 > oldCur.p1) {
+        showGoalToast(`🔥 PONTO! ${home}! Set ${idx + 1}: ${home} ${newCur.p1} × ${newCur.p2} ${away}`, 'goal');
+    } else if (newCur.p2 > oldCur.p2) {
+        showGoalToast(`🔥 PONTO! ${away}! Set ${idx + 1}: ${home} ${newCur.p1} × ${newCur.p2} ${away}`, 'goal');
+    }
 }
 
 function showGoalToast(msg, type = 'goal') {
@@ -2192,14 +2486,18 @@ async function initBracket() {
         ...Array(4).fill(null).map((_, i) => ({ fase: 'playin', ordem: i, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null })),
         // Quartas: 1°–4° (direto) vs vencedores do play-in (reordenados)
         ...Array(4).fill(null).map((_, i) => ({ fase: 'quartas', ordem: i, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null })),
-        ...Array(2).fill(null).map((_, i) => ({ fase: 'semis', ordem: i, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null })),
-        { fase: 'terceiro', ordem: 0, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null },
-        { fase: 'final', ordem: 0, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null },
+        // Semis, disputa de 3º lugar e final são melhor de 3 sets (21/21/15).
+        // A disputa de 3º lugar não entra aqui — tem id fixo, criada abaixo via
+        // THIRD_PLACE_ID/THIRD_PLACE_DOC (ver ensureThirdPlaceMatch).
+        ...Array(2).fill(null).map((_, i) => ({ fase: 'semis', ordem: i, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null, sets: [] })),
+        { fase: 'final', ordem: 0, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null, sets: [] },
     ];
     try {
         const batch = writeBatch(db);
         state.knockout.forEach(m => batch.delete(doc(db, 'mata_mata', m.id)));
         structure.forEach(s => batch.set(doc(collection(db, 'mata_mata')), s));
+        // a disputa de 3º lugar tem id fixo (ver ensureThirdPlaceMatch)
+        batch.set(doc(db, 'mata_mata', THIRD_PLACE_ID), THIRD_PLACE_DOC);
         await batch.commit();
         showToast('Bracket criado! Edite cada partida na aba Mata-Mata.', 'info', 5000);
     } catch (e) {
@@ -2261,6 +2559,7 @@ async function fillBracketFromStandings() {
         });
 
         await batch.commit();
+        await ensureThirdPlaceMatch(); // brackets antigos ganham a fase aqui
         showToast('Bracket preenchido! Play In com times 5°–12°, Quartas com 1°–4°.', 'success', 5000);
         showTab('mata-mata');
     } catch (e) {
@@ -2309,6 +2608,12 @@ async function reseedQuartasFromPlayIn() {
 
 function getMatchWinner(m) {
     if (m.ao_vivo) return null; // live matches have no winner yet
+    // Partidas por set: quem levar 2 sets vence, independente do total de pontos
+    if (isSetPhase(m.fase)) {
+        const s = summarizeSets(m.sets);
+        if (s.list.length > 0) return s.finished ? (s.winner === 1 ? m.time1 : m.time2) : null;
+        // sem array de sets (dado antigo) cai no placar simples abaixo
+    }
     if (m.gols1 == null || m.gols2 == null) return null;
     if (m.gols1 > m.gols2) return m.time1;
     if (m.gols2 > m.gols1) return m.time2;
@@ -2320,21 +2625,17 @@ function getMatchWinner(m) {
 }
 
 function getMatchLoser(m) {
-    if (m.ao_vivo) return null; // live matches have no loser yet
-    if (m.gols1 == null || m.gols2 == null) return null;
-    if (m.gols1 > m.gols2) return m.time2;
-    if (m.gols2 > m.gols1) return m.time1;
-    if (m.pen1 != null && m.pen2 != null) {
-        if (m.pen1 > m.pen2) return m.time2;
-        if (m.pen2 > m.pen1) return m.time1;
-    }
-    return null;
+    // Deriva do getMatchWinner (já sabe lidar com sets), em vez de reimplementar
+    // a lógica de decisão aqui — assim os dois nunca podem discordar.
+    const winner = getMatchWinner(m);
+    if (!winner || !m.time1 || !m.time2) return null;
+    return winner === m.time1 ? m.time2 : m.time1;
 }
 
-// Advance winners: quartas→semis, semis→final (e semis→terceiro, com os perdedores)
+// Advance winners: quartas→semis, semis→final
 // Semis: semi0 = winner(quartas0) vs winner(quartas1), semi1 = winner(quartas2) vs winner(quartas3)
 // Final: winner(semi0) vs winner(semi1)
-// Terceiro lugar: loser(semi0) vs loser(semi1)
+// Os perdedores das semis vão para a disputa de 3º lugar (ver fillThirdPlaceFromSemis)
 async function advanceWinners(fromPhase) {
     const nextPhase = fromPhase === 'quartas' ? 'semis' : 'final';
     const sourceMatches = state.knockout
@@ -2368,26 +2669,50 @@ async function advanceWinners(fromPhase) {
             });
         }
 
-        // Disputa de 3° lugar: perdedores das semifinais
-        if (fromPhase === 'semis') {
-            const terceiroMatches = state.knockout
-                .filter(m => m.fase === 'terceiro')
-                .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
-            if (terceiroMatches.length > 0) {
-                const losers = [0, 1].map(i => i < sourceMatches.length ? getMatchLoser(sourceMatches[i]) : null);
-                const dest = terceiroMatches[0];
-                const newTime1 = losers[0] || '';
-                const newTime2 = losers[1] || '';
-                if (dest.time1 !== newTime1 || dest.time2 !== newTime2) {
-                    batch.update(doc(db, 'mata_mata', dest.id), { time1: newTime1, time2: newTime2 });
-                    updated = true;
-                }
-            }
-        }
-
         if (updated) await batch.commit();
     } catch (e) {
         console.error('Erro ao avançar vencedores:', e);
+    }
+
+    if (fromPhase === 'semis') await fillThirdPlaceFromSemis();
+}
+
+// A disputa de 3º lugar tem id fixo — é sempre uma partida só
+const THIRD_PLACE_ID = 'terceiro';
+const THIRD_PLACE_DOC = { fase: 'terceiro', ordem: 0, time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null, sets: [] };
+
+// Brackets criados antes da disputa de 3º lugar não têm o doc dessa fase
+async function ensureThirdPlaceMatch() {
+    if (state.knockout.length === 0) return null;
+    const existing = state.knockout.find(m => m.fase === 'terceiro');
+    if (existing) return existing;
+    try {
+        // id fixo: se o snapshot ainda não chegou e isto rodar duas vezes, sobrescreve
+        // o mesmo doc em vez de criar uma segunda disputa de 3º lugar
+        await setDoc(doc(db, 'mata_mata', THIRD_PLACE_ID), THIRD_PLACE_DOC);
+        return { id: THIRD_PLACE_ID, fase: 'terceiro', time1: '', time2: '' };
+    } catch (e) {
+        console.error('Erro ao criar a disputa de 3º lugar:', e);
+        return null;
+    }
+}
+
+// Disputa de 3º lugar: perdedor(semi0) vs perdedor(semi1)
+async function fillThirdPlaceFromSemis() {
+    const semis = state.knockout
+        .filter(m => m.fase === 'semis')
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+    const dest = await ensureThirdPlaceMatch();
+    if (!dest || semis.length < 2) return;
+
+    const time1 = getMatchLoser(semis[0]) || '';
+    const time2 = getMatchLoser(semis[1]) || '';
+    if (dest.time1 === time1 && dest.time2 === time2) return;
+
+    try {
+        await updateDoc(doc(db, 'mata_mata', dest.id), { time1, time2 });
+    } catch (e) {
+        console.error('Erro ao preencher a disputa de 3º lugar:', e);
     }
 }
 
@@ -2601,7 +2926,7 @@ function init() {
         const m = state.editingBracket;
         if (!m) return;
         try {
-            await updateDoc(doc(db, 'mata_mata', m.id), { time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null });
+            await updateDoc(doc(db, 'mata_mata', m.id), { time1: '', time2: '', gols1: null, gols2: null, pen1: null, pen2: null, sets: [] });
             closeEditBracketModal();
             showToast('Partida limpa.', 'info');
         } catch (e) { showError(e.message); }
@@ -2614,22 +2939,10 @@ function init() {
     $('#live-score-end').addEventListener('click', endLiveMatch);
     $('#live-score-cancel').addEventListener('click', closeLiveScoreModal);
     $('#live-score-modal').querySelector('.modal-overlay').addEventListener('click', closeLiveScoreModal);
-    $('#live-home-plus').addEventListener('click', () => {
-        const el = $('#live-home-score');
-        el.textContent = parseInt(el.textContent) + 1;
-    });
-    $('#live-home-minus').addEventListener('click', () => {
-        const el = $('#live-home-score');
-        el.textContent = Math.max(0, parseInt(el.textContent) - 1);
-    });
-    $('#live-away-plus').addEventListener('click', () => {
-        const el = $('#live-away-score');
-        el.textContent = parseInt(el.textContent) + 1;
-    });
-    $('#live-away-minus').addEventListener('click', () => {
-        const el = $('#live-away-score');
-        el.textContent = Math.max(0, parseInt(el.textContent) - 1);
-    });
+    $('#live-home-plus').addEventListener('click', () => adjustLiveScore(1, 1));
+    $('#live-home-minus').addEventListener('click', () => adjustLiveScore(1, -1));
+    $('#live-away-plus').addEventListener('click', () => adjustLiveScore(2, 1));
+    $('#live-away-minus').addEventListener('click', () => adjustLiveScore(2, -1));
 
     $('#edit-players-save').addEventListener('click', savePlayersModal);
     $('#edit-players-cancel').addEventListener('click', closeEditPlayersModal);
